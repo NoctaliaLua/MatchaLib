@@ -14,12 +14,6 @@ local SoundService: SoundService = cloneref(game:GetService("SoundService"))
 local LocalPlayer = Players.LocalPlayer or Players.PlayerAdded:Wait()
 local Mouse = cloneref(LocalPlayer:GetMouse())
 
-local DrawingLib = { drawing_replaced = true, new = function(...) error("Drawing is not supported.") end }
-local IsBadDrawingLib = false
-
-if typeof(getgenv) == "function" and typeof(getgenv().Drawing) == "table" then
-    DrawingLib = getgenv().Drawing
-end
 
 local setclipboard = setclipboard or nil
 local getgenv = getgenv or function()
@@ -136,19 +130,19 @@ local CustomImageManagerAssets = {
         Id = nil,
     },
 
-    -- Noto Sans Sundanese (the "full" build, the hinted one has no latin letters)
+    -- Inter (open source, the closest free match to Apple's SF Pro): Medium is the body weight, SemiBold the bold one
     FontRegular = {
         RobloxId = 0,
-        Path = "NoctaliaLib/assets/NotoSansSundanese-Regular.ttf",
-        URL = BaseURL .. "assets/NotoSansSundanese-Regular.ttf",
+        Path = "NoctaliaLib/assets/Inter-Medium.ttf",
+        URL = BaseURL .. "assets/Inter-Medium.ttf",
 
         Id = nil,
     },
 
     FontBold = {
         RobloxId = 0,
-        Path = "NoctaliaLib/assets/NotoSansSundanese-Bold.ttf",
-        URL = BaseURL .. "assets/NotoSansSundanese-Bold.ttf",
+        Path = "NoctaliaLib/assets/Inter-SemiBold.ttf",
+        URL = BaseURL .. "assets/Inter-SemiBold.ttf",
 
         Id = nil,
     }
@@ -240,8 +234,8 @@ do
     end
 
     for AssetName, _ in CustomImageManagerAssets do
-        -- the Noto Sans Sundanese files are only fetched when getgenv().NoctaliaUseCustomFont = true
-        if (AssetName == "FontRegular" or AssetName == "FontBold") and getgenv().NoctaliaUseCustomFont ~= true then
+        -- the Inter files are skipped when getgenv().NoctaliaUseCustomFont = false
+        if (AssetName == "FontRegular" or AssetName == "FontBold") and getgenv().NoctaliaUseCustomFont == false then
             continue
         end
 
@@ -257,8 +251,8 @@ do
             return
         end
 
-        -- opt in with getgenv().NoctaliaUseCustomFont = true before loading (its latin glyphs have odd spacing)
-        if getgenv().NoctaliaUseCustomFont ~= true then
+        -- set getgenv().NoctaliaUseCustomFont = false before loading to stay on Roboto
+        if getgenv().NoctaliaUseCustomFont == false then
             return
         end
 
@@ -269,10 +263,10 @@ do
             return
         end
 
-        local FamilyPath = "NoctaliaLib/assets/NotoSansSundanese.json"
+        local FamilyPath = "NoctaliaLib/assets/Inter.json"
 
         writefile(FamilyPath, cloneref(game:GetService("HttpService")):JSONEncode({
-            name = "Noto Sans Sundanese",
+            name = "Inter",
             faces = {
                 { name = "Regular", weight = 400, style = "normal", assetId = getcustomasset(RegularPath) },
                 { name = "Bold", weight = 700, style = "normal", assetId = getcustomasset(BoldPath) },
@@ -289,7 +283,7 @@ do
         CustomFace, CustomFaceBold = nil, nil
     end
 
-    -- default: Roboto, the closest roblox font to Noto Sans
+    -- fallback when the Inter files are missing: Roboto
     if not CustomFace then
         pcall(function()
             CustomFace = Font.new("rbxasset://fonts/families/Roboto.json", Enum.FontWeight.Regular, Enum.FontStyle.Normal)
@@ -326,7 +320,7 @@ local Library = {
 
     Black = Color3.new(0, 0, 0);
     Font = Enum.Font.Roboto; -- fallback when FontFace could not be created
-    FontFace = CustomFace; -- Roboto (or Noto Sans Sundanese when opted in)
+    FontFace = CustomFace; -- Inter (Roboto when the files are missing)
     FontFaceBold = CustomFaceBold;
 
     -- panel style --
