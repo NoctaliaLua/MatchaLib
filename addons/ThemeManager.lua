@@ -55,8 +55,8 @@ local ThemeManager = {} do
 	ThemeManager.Library = nil
 	ThemeManager.BuiltInThemes = {
 		-- BackgroundColor is the window, MainColor the checkboxes / inputs / pills and the cards sit halfway between the two
-		['Default']       = { 1, { FontColor = "f0f0f4", MainColor = "16161b", AccentColor = "cdcdd6", BackgroundColor = "0c0c10", OutlineColor = "24242b" } },
-		['Matcha']        = { 2, { FontColor = "f0f2ee", MainColor = "16181a", AccentColor = "9cc27a", BackgroundColor = "0c0d0e", OutlineColor = "25282a" } },
+		['Default']       = { 1, { FontColor = "f0f0f4", MainColor = "16161b", AccentColor = "cdcdd6", BackgroundColor = "0c0b10", OutlineColor = "24242b", TopbarColor = "08080c", CardColor = "101014", CardOutlineColor = "151419" } },
+		['Matcha']        = { 2, { FontColor = "f0f2ee", MainColor = "16181a", AccentColor = "9cc27a", BackgroundColor = "0b0d0c", OutlineColor = "25282a", TopbarColor = "080a09", CardColor = "0f1211", CardOutlineColor = "151a18" } },
 		['BBot']          = { 3, { FontColor = "ffffff", MainColor = "232323", AccentColor = "7e48a3", BackgroundColor = "161616", OutlineColor = "303030" } },
 		['Fatality']      = { 4, { FontColor = "ffffff", MainColor = "231d4d", AccentColor = "c50754", BackgroundColor = "140f2b", OutlineColor = "3c355d" } },
 		['Jester']        = { 5, { FontColor = "ffffff", MainColor = "242424", AccentColor = "db4467", BackgroundColor = "141414", OutlineColor = "373737" } },
@@ -155,8 +155,13 @@ local ThemeManager = {} do
 			self.Library.InnerVideoBackground.Visible = false
 		end
 		
-		local scheme = data[2]
-		for idx, col in next, customThemeData or scheme do
+		local scheme = customThemeData or data[2]
+
+		-- themes that predate the top bar / cards derive those colors from the base ones
+		self.DerivedColors = scheme.CardColor == nil
+		self.Applying = true
+
+		for idx, col in next, scheme do
 			if idx == "VideoLink" then
 				self.Library[idx] = col
 				
@@ -174,7 +179,16 @@ local ThemeManager = {} do
 			end
 		end
 
+		self.Applying = false
 		self:ThemeUpdate()
+	end
+
+	function ThemeManager:DeriveColors()
+		local library = self.Library
+
+		library.TopbarColor = library.BackgroundColor:Lerp(Color3.new(0, 0, 0), 0.35)
+		library.CardColor = library.BackgroundColor:Lerp(library.MainColor, 0.4)
+		library.CardOutlineColor = library.CardColor:Lerp(library.OutlineColor, 0.35)
 	end
 
 	function ThemeManager:ThemeUpdate()
@@ -191,6 +205,10 @@ local ThemeManager = {} do
 					ApplyBackgroundVideo(self.Library.Options[field].Value)
 				end
 			end
+		end
+
+		if self.DerivedColors then
+			self:DeriveColors()
 		end
 
 		self.Library.AccentColorDark = self.Library:GetDarkerColor(self.Library.AccentColor);
@@ -302,7 +320,7 @@ local ThemeManager = {} do
 
 	--// GUI \\--
 	function ThemeManager:CreateThemeManager(groupbox)
-		groupbox:AddToggle('Transparency', { Text = 'Transparency', Default = true, Callback = function(Value) self.Library:SetTransparency(Value) end })
+		groupbox:AddToggle('Transparency', { Text = 'Transparency', Default = false, Callback = function(Value) self.Library:SetTransparency(Value) end })
 		groupbox:AddDivider()
 
 		groupbox:AddLabel('Background color'):AddColorPicker('BackgroundColor', { Default = self.Library.BackgroundColor });
@@ -399,7 +417,14 @@ local ThemeManager = {} do
 
 		self:LoadDefault()
 
-		local function UpdateTheme() self:ThemeUpdate() end
+		local function UpdateTheme()
+			-- picking a color by hand means the bars / cards follow it again
+			if not self.Applying then
+				self.DerivedColors = true
+			end
+
+			self:ThemeUpdate()
+		end
 		self.Library.Options.BackgroundColor:OnChanged(UpdateTheme)
 		self.Library.Options.MainColor:OnChanged(UpdateTheme)
 		self.Library.Options.AccentColor:OnChanged(UpdateTheme)
