@@ -10,7 +10,6 @@ local Toggles = Library.Toggles
 local Players = game:GetService("Players")
 
 Library.ShowToggleFrameInKeybinds = true
-Library.ShowCustomCursor = true
 Library.NotifySide = "Left"
 
 local Window = Library:CreateWindow({
@@ -19,16 +18,15 @@ local Window = Library:CreateWindow({
 	Badge = "Pro",
 
 	-- Username defaults to the local player's name; pass `Username = "..."` to override it
-	FooterLeft = "9096 online",
+	FooterLeft = "Connected",
 	FooterCenter = "matcha.pink/discord",
 	FooterRightLabel = "Build:",
-	FooterRightValue = "Jun 19 2026",
+	FooterRightValue = os.date("%b ") .. tonumber(os.date("%d")) .. os.date(" %Y"),
 
-	Size = UDim2.fromOffset(620, 700),
+	Size = UDim2.fromOffset(605, 970),
 	Center = true,
 	AutoShow = true,
 	Resizable = true,
-	ShowCustomCursor = true,
 	UnlockMouseWhileOpen = true,
 	NotifySide = "Left",
 	TabPadding = 8,
@@ -37,13 +35,7 @@ local Window = Library:CreateWindow({
 
 local Tabs = {
 	Combat = Window:AddTab("Combat"),
-	Visuals = Window:AddTab("Visuals"),
-	World = Window:AddTab("World"),
-	Character = Window:AddTab("Character"),
-	Options = Window:AddTab("Options"),
 	Configs = Window:AddTab("Configs"),
-	NPC = Window:AddTab("NPC"),
-	Teams = Window:AddTab("Teams"),
 }
 
 --// Combat \\--
@@ -199,121 +191,6 @@ Options.AimbotKey:OnClick(function()
 	print("Aimbot key state:", Options.AimbotKey:GetState())
 end)
 
---// Visuals \\--
-local ESPGroup = Tabs.Visuals:AddLeftGroupbox("ESP")
-
-ESPGroup:AddToggle("ESPEnabled", { Text = "Enabled" })
-ESPGroup:AddToggle("ESPBoxes", { Text = "Boxes" }):AddColorPicker("ESPBoxColor", {
-	Default = Color3.fromRGB(255, 255, 255),
-	Title = "Box color",
-})
-ESPGroup:AddToggle("ESPNames", { Text = "Names" })
-ESPGroup:AddToggle("ESPHealth", { Text = "Health Bar" })
-ESPGroup:AddToggle("ESPTracers", { Text = "Tracers" }):AddColorPicker("ESPTracerColor", {
-	Default = Color3.fromRGB(205, 205, 214),
-	Title = "Tracer color",
-	Transparency = 0,
-})
-
-ESPGroup:AddSlider("ESPDistance", { Text = "Max Distance", Default = 1500, Min = 0, Max = 5000, Rounding = 0 })
-ESPGroup:AddDropdown("ESPBoxStyle", { Text = "Box Style", Values = { "2D", "Corner", "3D" }, Default = 1 })
-
-local ChamsGroup = Tabs.Visuals:AddRightGroupbox("Chams")
-
-ChamsGroup:AddToggle("ChamsEnabled", { Text = "Enabled" })
-ChamsGroup:AddLabel("Fill"):AddColorPicker("ChamsFill", { Default = Color3.fromRGB(255, 80, 80), Title = "Fill color", Transparency = 0.5 })
-ChamsGroup:AddLabel("Outline"):AddColorPicker("ChamsOutline", { Default = Color3.fromRGB(255, 255, 255), Title = "Outline color" })
-ChamsGroup:AddDropdown("ChamsParts", {
-	Text = "Body Parts",
-	Values = { "Head", "Torso", "Arms", "Legs" },
-	Default = { "Head", "Torso" },
-	Multi = true,
-})
-
---// World \\--
-local LightingGroup = Tabs.World:AddLeftGroupbox("Lighting")
-
-LightingGroup:AddToggle("Fullbright", { Text = "Fullbright" })
-LightingGroup:AddSlider("TimeOfDay", { Text = "Time of Day", Default = 14, Min = 0, Max = 24, Rounding = 1 })
-LightingGroup:AddLabel("Ambient"):AddColorPicker("AmbientColor", { Default = Color3.fromRGB(128, 128, 128), Title = "Ambient color" })
-
-local WorldMisc = Tabs.World:AddRightGroupbox("Misc")
-
-WorldMisc:AddToggle("NoFog", { Text = "Remove Fog" })
-WorldMisc:AddToggle("NoShadows", { Text = "Remove Shadows" })
-WorldMisc:AddButton({
-	Text = "Notify",
-	Func = function()
-		Library:Notify("This is a notification")
-	end,
-	Tooltip = "Shows a notification",
-})
-
---// Character \\--
-local MovementGroup = Tabs.Character:AddLeftGroupbox("Movement")
-
-MovementGroup:AddToggle("SpeedEnabled", { Text = "Speed" }):AddKeyPicker("SpeedKey", {
-	Default = "LeftShift",
-	Mode = "Toggle",
-	Text = "Speed",
-})
-MovementGroup:AddSlider("WalkSpeed", { Text = "Walk Speed", Default = 16, Min = 16, Max = 200, Rounding = 0 })
-MovementGroup:AddToggle("FlyEnabled", { Text = "Fly" })
-MovementGroup:AddSlider("FlySpeed", { Text = "Fly Speed", Default = 50, Min = 1, Max = 300, Rounding = 0 })
-
-local CharacterMisc = Tabs.Character:AddRightGroupbox("Misc")
-
-CharacterMisc:AddToggle("InfiniteJump", { Text = "Infinite Jump" })
-CharacterMisc:AddInput("CharacterName", {
-	Text = "Display name",
-	Default = "",
-	Placeholder = "Type something",
-	Finished = true,
-})
-CharacterMisc:AddButton({
-	Text = "Reset Character",
-	Func = function()
-		local Humanoid = Players.LocalPlayer.Character and Players.LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
-		if Humanoid then
-			Humanoid.Health = 0
-		end
-	end,
-	DoubleClick = true,
-	Tooltip = "Double click to reset",
-})
-
---// NPC \\--
-local NPCGroup = Tabs.NPC:AddLeftGroupbox("NPC ESP")
-
-NPCGroup:AddToggle("NPCEnabled", { Text = "Enabled" })
-NPCGroup:AddToggle("NPCNames", { Text = "Names" })
-NPCGroup:AddSlider("NPCDistance", { Text = "Max Distance", Default = 800, Min = 0, Max = 3000, Rounding = 0 })
-
---// Teams \\--
-local TeamGroup = Tabs.Teams:AddLeftGroupbox("Targets")
-
-TeamGroup:AddDropdown("TeamList", { SpecialType = "Team", Text = "Team" })
-TeamGroup:AddDropdown("PlayerList", { SpecialType = "Player", ExcludeLocalPlayer = true, Text = "Player" })
-
-local DependencyGroup = Tabs.Teams:AddRightGroupbox("Dependencies")
-
-DependencyGroup:AddToggle("ControlToggle", { Text = "Dependency box toggle" })
-
-local Depbox = DependencyGroup:AddDependencyBox()
-Depbox:AddToggle("DepboxToggle", { Text = "Sub-dependency box toggle" })
-
-local SubDepbox = Depbox:AddDependencyBox()
-SubDepbox:AddSlider("DepboxSlider", { Text = "Slider", Default = 50, Min = 0, Max = 100, Rounding = 0 })
-SubDepbox:AddDropdown("DepboxDropdown", { Text = "Dropdown", Default = 1, Values = { "a", "b", "c" } })
-
-Depbox:SetupDependencies({
-	{ Toggles.ControlToggle, true }
-})
-
-SubDepbox:SetupDependencies({
-	{ Toggles.DepboxToggle, true }
-})
-
 --// Watermark \\--
 local StartTime = tick()
 local GameName = tostring(game.Name)
@@ -341,8 +218,10 @@ end
 
 local function FormatUptime(Seconds)
 	Seconds = math.floor(Seconds)
-	return ("%02d:%02d:%02d"):format(math.floor(Seconds / 3600), math.floor(Seconds / 60) % 60, Seconds % 60)
+	return ("%02d %02d %02d"):format(math.floor(Seconds / 3600), math.floor(Seconds / 60) % 60, Seconds % 60)
 end
+
+Library:SetWatermarkTitle("Matcha", "Pro")
 
 local WatermarkConnection = game:GetService("RunService").RenderStepped:Connect(function()
 	FrameCounter += 1;
@@ -358,21 +237,17 @@ local WatermarkConnection = game:GetService("RunService").RenderStepped:Connect(
 	end
 	LastUpdate = tick()
 
-	local Parts = {}
+	local Segments = {}
 
-	if IsOn("WatermarkNoctalia") then table.insert(Parts, "NoctaliaLib demo") end
-	if IsOn("WatermarkGame") then table.insert(Parts, GameName) end
-	if IsOn("WatermarkUser") then table.insert(Parts, Players.LocalPlayer.Name) end
-	if IsOn("WatermarkFps") then table.insert(Parts, ("%d fps"):format(math.floor(FPS))) end
-	if IsOn("WatermarkPing") and CanDoPing then table.insert(Parts, ("%d ms"):format(GetPing())) end
-	if IsOn("WatermarkTime") then table.insert(Parts, os.date("%I:%M %p"):lower()) end
-	if IsOn("WatermarkUptime") then table.insert(Parts, FormatUptime(tick() - StartTime)) end
+	if IsOn("WatermarkUser") then table.insert(Segments, { Text = Players.LocalPlayer.Name, Bold = true }) end
+	if IsOn("WatermarkGame") then table.insert(Segments, GameName) end
+	if IsOn("WatermarkFps") then table.insert(Segments, { Text = tostring(math.floor(FPS)), Suffix = "FPS", Color = "OnlineColor" }) end
+	if IsOn("WatermarkPing") and CanDoPing then table.insert(Segments, { Text = tostring(GetPing()), Suffix = "ms" }) end
+	if IsOn("WatermarkTime") then table.insert(Segments, os.date("%H %M %S")) end
+	if IsOn("WatermarkUptime") then table.insert(Segments, FormatUptime(tick() - StartTime)) end
 
-	Library:SetWatermarkVisibility(IsOn("WatermarkEnabled") and #Parts > 0)
-
-	if #Parts > 0 then
-		Library:SetWatermark(table.concat(Parts, " | "))
-	end
+	Library:SetWatermarkVisibility(IsOn("WatermarkEnabled"))
+	Library:SetWatermarkSegments(Segments)
 end);
 Library:OnUnload(function()
 	WatermarkConnection:Disconnect()
@@ -381,20 +256,21 @@ Library:OnUnload(function()
 	Library.Unloaded = true
 end)
 
---// Options \\--
-local MenuGroup = Tabs.Options:AddLeftGroupbox("Menu")
+--// Configs \\--
+local MenuGroup = Tabs.Configs:AddLeftGroupbox("Menu")
 
 MenuGroup:AddToggle("KeybindMenuOpen", { Default = Library.KeybindFrame.Visible, Text = "Open Keybind Menu", Callback = function(value) Library.KeybindFrame.Visible = value end})
-MenuGroup:AddToggle("ShowCustomCursor", {Text = "Custom Cursor", Default = true, Callback = function(Value) Library.ShowCustomCursor = Value end})
 MenuGroup:AddToggle("KeybindNotification", {Text = "Keybind notification", Default = false, Callback = function(Value) Library.KeybindNotification = Value end})
 MenuGroup:AddToggle("BlurEnabled", {Text = "Blur", Default = false, Callback = function(Value) Library:SetBlur(Value) end})
+MenuGroup:AddToggle("DarkOverlay", {Text = "Dark", Default = true, Callback = function(Value) Library:SetDark(Value) end})
+MenuGroup:AddToggle("SnowEffect", {Text = "Snow", Default = true, Callback = function(Value) Library:SetSnow(Value) end})
 MenuGroup:AddDivider()
 MenuGroup:AddLabel("Menu bind"):AddKeyPicker("MenuKeybind", { Default = "RightShift", NoUI = true, Text = "Menu keybind" })
-MenuGroup:AddButton("Unload", function() Library:Unload() end)
+MenuGroup:AddButton({ Text = "Unload", Func = function() Library:Unload() end, Danger = true })
 
 Library.ToggleKeybind = Options.MenuKeybind
 
-local SoundGroup = Tabs.Options:AddRightGroupbox("Sounds")
+local SoundGroup = Tabs.Configs:AddRightGroupbox("Sounds")
 
 SoundGroup:AddToggle("UISound", {
 	Text = "Ui sound",
@@ -412,22 +288,28 @@ SoundGroup:AddToggle("KeybindSound", {
 	end
 })
 
-local WatermarkGroup = Tabs.Options:AddRightGroupbox("Watermark")
+local WatermarkGroup = Tabs.Configs:AddRightGroupbox("Watermark")
 
 for _, Entry in ipairs({
 	{ "WatermarkEnabled", "Enabled", true },
-	{ "WatermarkNoctalia", "Noctalia", true },
+	{ "WatermarkUser", "User", true },
 	{ "WatermarkGame", "Game", false },
-	{ "WatermarkUser", "User", false },
 	{ "WatermarkFps", "Fps", true },
-	{ "WatermarkPing", "Ping", true },
-	{ "WatermarkTime", "Time", false },
+	{ "WatermarkPing", "Ping", false },
+	{ "WatermarkTime", "Time", true },
 	{ "WatermarkUptime", "Uptime", false },
 }) do
 	WatermarkGroup:AddToggle(Entry[1], { Text = Entry[2], Default = Entry[3] })
 end
 
---// Configs \\--
+-- danger / warning on any element forces the text color (and adds a faint glow)
+local StatusGroup = Tabs.Configs:AddRightGroupbox("Status colors")
+
+StatusGroup:AddToggle("DangerToggle", { Text = "Danger toggle", Danger = true })
+StatusGroup:AddToggle("WarningToggle", { Text = "Warning toggle", Warning = true })
+StatusGroup:AddButton({ Text = "Danger button", Func = function() Library:Notify("Danger!") end, Danger = true })
+StatusGroup:AddButton({ Text = "Warning button", Func = function() Library:Notify("Careful!") end, Warning = true })
+
 ThemeManager:SetLibrary(Library)
 SaveManager:SetLibrary(Library)
 
@@ -439,8 +321,7 @@ ThemeManager:SetFolder("MyScriptHub")
 SaveManager:SetFolder("MyScriptHub/specific-game")
 SaveManager:SetSubFolder("specific-place")
 
-SaveManager:BuildConfigSection(Tabs.Configs)
-
 ThemeManager:ApplyToTab(Tabs.Configs)
+SaveManager:BuildConfigSection(Tabs.Configs)
 
 SaveManager:LoadAutoloadConfig()
