@@ -93,12 +93,12 @@ local Tooltips = {}
 local Dialogues = {}
 
 -- https://github.com/deividcomsono/Obsidian/blob/main/Library.lua#L30
-local BaseURL = "https://raw.githubusercontent.com/NoctaliaLua/NoctaliaLib/refs/heads/main/"
+local BaseURL = "https://raw.githubusercontent.com/NoctaliaLua/MatchaLib/refs/heads/main/"
 local CustomImageManager = {}
 local CustomImageManagerAssets = {
     Cursor = {
         RobloxId = 9619665977,
-        Path = "NoctaliaLib/assets/Cursor.png",
+        Path = "MatchaLib/assets/Cursor.png",
         URL = BaseURL .. "assets/Cursor.png",
 
         Id = nil,
@@ -106,7 +106,7 @@ local CustomImageManagerAssets = {
 
     DropdownArrow = {
         RobloxId = 6282522798,
-        Path = "NoctaliaLib/assets/DropdownArrow.png",
+        Path = "MatchaLib/assets/DropdownArrow.png",
         URL = BaseURL .. "assets/DropdownArrow.png",
 
         Id = nil,
@@ -114,7 +114,7 @@ local CustomImageManagerAssets = {
 
     Checker = {
         RobloxId = 12977615774,
-        Path = "NoctaliaLib/assets/Checker.png",
+        Path = "MatchaLib/assets/Checker.png",
         URL = BaseURL .. "assets/Checker.png",
 
         Id = nil,
@@ -122,7 +122,7 @@ local CustomImageManagerAssets = {
 
     CheckerLong = {
         RobloxId = 12978095818,
-        Path = "NoctaliaLib/assets/CheckerLong.png",
+        Path = "MatchaLib/assets/CheckerLong.png",
         URL = BaseURL .. "assets/CheckerLong.png",
 
         Id = nil,
@@ -130,7 +130,7 @@ local CustomImageManagerAssets = {
 
     SaturationMap = {
         RobloxId = 4155801252,
-        Path = "NoctaliaLib/assets/SaturationMap.png",
+        Path = "MatchaLib/assets/SaturationMap.png",
         URL = BaseURL .. "assets/SaturationMap.png",
 
         Id = nil,
@@ -414,7 +414,7 @@ type IconModule = {
 
 local FetchIcons, Icons = pcall(function()
     return (loadstring(
-        game:HttpGet("https://raw.githubusercontent.com/NoctaliaLua/lucide-roblox-direct/refs/heads/main/source.lua")
+        game:HttpGet("https://raw.githubusercontent.com/mstudio45/lucide-roblox-direct/refs/heads/main/source.lua")
     ) :: () -> IconModule)()
 end)
 
@@ -1466,7 +1466,7 @@ function Library:Unload()
 
     ScreenGui:Destroy()
 
-    getgenv().Noctalia = nil
+    getgenv().Matcha = nil
 end
 
 function Library:OnUnload(Callback)
@@ -7031,7 +7031,7 @@ function Library:CreateWindow(...)
     })
 
     local WindowBlur = Instance.new("BlurEffect")
-    WindowBlur.Name = "NoctaliaBlur"
+    WindowBlur.Name = "MatchaBlur"
     WindowBlur.Enabled = false
     WindowBlur.Size = 0
     pcall(function() WindowBlur.Parent = Lighting end)
@@ -8955,6 +8955,6 @@ Library:GiveSignal(RunService.RenderStepped:Connect(function(Delta)
 end))
 
 ----
-getgenv().Noctalia = Library
-if getgenv().skip_getgenv_noctalia ~= true then getgenv().Library = Library end
+getgenv().Matcha = Library
+if getgenv().skip_getgenv_matcha ~= true then getgenv().Library = Library end
 return Library
