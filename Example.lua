@@ -177,7 +177,7 @@ TriggerBot:AddToggle("TriggerTeamCheck", { Text = "Team Check" })
 
 TriggerBot:AddSlider("TriggerHitbox", { Text = "Hitbox Mul", Default = 1, Min = 1, Max = 10, Rounding = 2 })
 TriggerBot:AddSlider("TriggerDelay", { Text = "Delay (ms)", Default = 1, Min = 1, Max = 500, Rounding = 0 })
-TriggerBot:AddSlider("TriggerRelease", { Text = "Release (ms)", Default = 10, Min = 1, Max = 500, Rounding = 0 })
+TriggerBot:AddSlider("TriggerRelease", { Text = "Release (ms)", Default = 10, Min = 10, Max = 500, Rounding = 0 })
 
 Toggles.AimbotEnabled:OnChanged(function()
 	print("Aimbot enabled:", Toggles.AimbotEnabled.Value)
@@ -257,6 +257,20 @@ Library:OnUnload(function()
 end)
 
 --// Configs \\--
+ThemeManager:SetLibrary(Library)
+SaveManager:SetLibrary(Library)
+
+SaveManager:IgnoreThemeSettings()
+
+SaveManager:SetIgnoreIndexes({ "MenuKeybind" })
+
+ThemeManager:SetFolder("MyScriptHub")
+SaveManager:SetFolder("MyScriptHub/specific-game")
+SaveManager:SetSubFolder("specific-place")
+
+-- built first so the Configuration box sits at the top of the right column
+SaveManager:BuildConfigSection(Tabs.Configs)
+
 local MenuGroup = Tabs.Configs:AddLeftGroupbox("Menu")
 
 MenuGroup:AddToggle("KeybindMenuOpen", { Default = Library.KeybindFrame.Visible, Text = "Open Keybind Menu", Callback = function(value) Library.KeybindFrame.Visible = value end})
@@ -266,7 +280,7 @@ MenuGroup:AddToggle("DarkOverlay", {Text = "Dark", Default = true, Callback = fu
 MenuGroup:AddToggle("SnowEffect", {Text = "Snow", Default = true, Callback = function(Value) Library:SetSnow(Value) end})
 MenuGroup:AddDivider()
 MenuGroup:AddLabel("Menu bind"):AddKeyPicker("MenuKeybind", { Default = "RightShift", NoUI = true, Text = "Menu keybind" })
-MenuGroup:AddButton({ Text = "Unload", Func = function() Library:Unload() end, Danger = true })
+MenuGroup:AddButton("Unload", function() Library:Unload() end)
 
 Library.ToggleKeybind = Options.MenuKeybind
 
@@ -302,26 +316,6 @@ for _, Entry in ipairs({
 	WatermarkGroup:AddToggle(Entry[1], { Text = Entry[2], Default = Entry[3] })
 end
 
--- danger / warning on any element forces the text color (and adds a faint glow)
-local StatusGroup = Tabs.Configs:AddRightGroupbox("Status colors")
-
-StatusGroup:AddToggle("DangerToggle", { Text = "Danger toggle", Danger = true })
-StatusGroup:AddToggle("WarningToggle", { Text = "Warning toggle", Warning = true })
-StatusGroup:AddButton({ Text = "Danger button", Func = function() Library:Notify("Danger!") end, Danger = true })
-StatusGroup:AddButton({ Text = "Warning button", Func = function() Library:Notify("Careful!") end, Warning = true })
-
-ThemeManager:SetLibrary(Library)
-SaveManager:SetLibrary(Library)
-
-SaveManager:IgnoreThemeSettings()
-
-SaveManager:SetIgnoreIndexes({ "MenuKeybind" })
-
-ThemeManager:SetFolder("MyScriptHub")
-SaveManager:SetFolder("MyScriptHub/specific-game")
-SaveManager:SetSubFolder("specific-place")
-
 ThemeManager:ApplyToTab(Tabs.Configs)
-SaveManager:BuildConfigSection(Tabs.Configs)
 
 SaveManager:LoadAutoloadConfig()
