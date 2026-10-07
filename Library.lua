@@ -2059,6 +2059,7 @@ do
             end))
 
             KeybindsToggle.Loaded = true
+        end
 
         local ModeSelectOuter = Library:Create("Frame", {
             BackgroundTransparency = 1;
@@ -4726,6 +4727,7 @@ do
             else
                 ToggleGlow.ImageTransparency = Goal
             end
+        end
 
         local function DimColor()
             return Library:GetDimColor()
@@ -4766,6 +4768,7 @@ do
 
             Library.RegistryMap[ToggleInner].Properties.BackgroundColor3 = Toggle.Value and "AccentColor" or "MainColor"
             Library.RegistryMap[ToggleStroke].Properties.Color = Toggle.Value and "AccentColor" or "OutlineColor"
+        end
 
         function Toggle:OnChanged(Func)
             Toggle.Changed = Func
@@ -8840,6 +8843,7 @@ end
             TabActive = false
             RefreshTabButton()
             TabFrame.Visible = false
+        end
         Tab.Hide = Tab.HideTab
 
         function Tab:SetLayoutOrder(Position)
