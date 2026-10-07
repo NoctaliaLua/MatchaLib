@@ -252,6 +252,11 @@ do
             return
         end
 
+        -- set getgenv().NoctaliaUseCustomFont = false before loading to stay on the roblox font
+        if getgenv().NoctaliaUseCustomFont == false then
+            return
+        end
+
         local RegularPath = CustomImageManagerAssets.FontRegular.Path
         local BoldPath = CustomImageManagerAssets.FontBold.Path
 
@@ -735,22 +740,10 @@ function Library:ApplyStatus(Element, Label)
     end
     Reg.Properties.TextColor3 = Status
 
-    if not Halo then
-        Halo = Library:Create("UIStroke", {
-            ApplyStrokeMode = Enum.ApplyStrokeMode.Contextual;
-            Name = "StatusHalo";
-            Thickness = 1.5;
-            Transparency = 0.82;
-            Parent = Label;
-        })
-
-        Library:AddToRegistry(Halo, {
-            Color = Status;
-        })
+    -- (older builds added a halo here, it is gone now)
+    if Halo then
+        Halo:Destroy()
     end
-
-    Halo.Color = Library[Status]
-    Library.RegistryMap[Halo].Properties.Color = Status
 
     return true
 end
@@ -6806,7 +6799,6 @@ do
         Parent = ScreenGui;
     })
 
-    Library:AddShadow(KeybindOuter, 22, Library.Black, 0.35)
 
     -- same look as the main window: dark body, a darker header strip, a thin border
     local KeybindInner = Library:Create("Frame", {
@@ -6827,12 +6819,26 @@ do
 
     local KeybindHeader = Library:Create("Frame", {
         BackgroundColor3 = Library.TopbarColor;
+        Corner = 10;
         Size = UDim2.new(1, 0, 0, 28);
         ZIndex = 102;
         Parent = KeybindInner;
     })
 
     Library:AddToRegistry(KeybindHeader, {
+        BackgroundColor3 = "TopbarColor";
+    }, true)
+
+    -- squares off the bottom half of the rounded header
+    local KeybindHeaderFiller = Library:Create("Frame", {
+        BackgroundColor3 = Library.TopbarColor;
+        Position = UDim2.new(0, 0, 0, 12);
+        Size = UDim2.new(1, 0, 0, 16);
+        ZIndex = 102;
+        Parent = KeybindHeader;
+    })
+
+    Library:AddToRegistry(KeybindHeaderFiller, {
         BackgroundColor3 = "TopbarColor";
     }, true)
 
@@ -6906,7 +6912,6 @@ do
     })
     Library:AddStroke(WatermarkOuter, "OutlineColor")
     Library:AddGlass(WatermarkOuter)
-    Library:AddShadow(WatermarkOuter, 18, Library.Black, 0.4)
 
     Library:Create("UIPadding", {
         PaddingLeft = UDim.new(0, 13);
@@ -7126,12 +7131,12 @@ do
     local Random = Random.new()
 
     for Idx = 1, FlakeCount do
-        local Size = Random:NextInteger(2, 5)
+        local Size = Random:NextInteger(4, 9)
 
         local Flake = Library:Create("Frame", {
             BackgroundColor3 = Color3.new(1, 1, 1);
             BackgroundTransparency = 1;
-            Corner = 3;
+            Corner = 6;
             Size = UDim2.fromOffset(Size, Size);
             ZIndex = 0;
             Parent = Backdrop;
@@ -7141,7 +7146,7 @@ do
             Frame = Flake;
             X = Random:NextNumber(0, 1);
             Y = Random:NextNumber(0, 1);
-            Speed = Random:NextNumber(18, 55) * (Size / 3); -- bigger flakes fall faster
+            Speed = Random:NextNumber(18, 55) * (Size / 6); -- bigger flakes fall faster
             Sway = Random:NextNumber(6, 22);
             SwaySpeed = Random:NextNumber(0.4, 1.2);
             Phase = Random:NextNumber(0, math.pi * 2);
@@ -7531,8 +7536,6 @@ function Library:CreateWindow(...)
     Library:AddGlass(Inner)
     LibraryMainInnerFrame = Inner
 
-    -- black drop shadow around the whole window
-    local WindowShadow = Library:AddShadow(Outer, 26, Library.Black, 0.35)
     if WindowInfo.Resizable then Library:MakeResizable(Outer, Library.MinSize, Inner) end
 
     local WindowScale = Library:Create("UIScale", {
@@ -7558,8 +7561,11 @@ function Library:CreateWindow(...)
     local ContentTop = TabRowTop + TabRowHeight + 10
     local FooterHeight = 32
 
+    -- ClipsDescendants does not follow rounded corners, so the bar rounds its own top
+    -- and a plain filler squares off the bottom half
     local Topbar = Library:Create("Frame", {
         BackgroundColor3 = Library.TopbarColor;
+        Corner = 14;
         Size = UDim2.new(1, 0, 0, HeaderHeight);
         ZIndex = 1;
         Parent = Inner;
@@ -7568,11 +7574,22 @@ function Library:CreateWindow(...)
         BackgroundColor3 = "TopbarColor";
     })
 
+    local TopbarFiller = Library:Create("Frame", {
+        BackgroundColor3 = Library.TopbarColor;
+        Position = UDim2.new(0, 0, 0, 14);
+        Size = UDim2.new(1, 0, 0, HeaderHeight - 14);
+        ZIndex = 1;
+        Parent = Topbar;
+    })
+    Library:AddToRegistry(TopbarFiller, {
+        BackgroundColor3 = "TopbarColor";
+    })
+
     local TopbarLine = Library:Create("Frame", {
         BackgroundColor3 = Library.CardOutlineColor;
         Position = UDim2.new(0, 0, 1, -1);
         Size = UDim2.new(1, 0, 0, 1);
-        ZIndex = 1;
+        ZIndex = 2;
         Parent = Topbar;
     })
     Library:AddToRegistry(TopbarLine, {
@@ -7784,6 +7801,7 @@ function Library:CreateWindow(...)
     -- bottom bar: status on the left, a link in the middle, build info on the right
     local FooterHolder = Library:Create("Frame", {
         BackgroundColor3 = Library.TopbarColor;
+        Corner = 14;
         Position = UDim2.new(0, 0, 1, -FooterHeight);
         Size = UDim2.new(1, 0, 0, FooterHeight);
         Visible = false;
@@ -7794,10 +7812,20 @@ function Library:CreateWindow(...)
         BackgroundColor3 = "TopbarColor";
     })
 
+    local FooterFiller = Library:Create("Frame", {
+        BackgroundColor3 = Library.TopbarColor;
+        Size = UDim2.new(1, 0, 0, FooterHeight - 14);
+        ZIndex = 1;
+        Parent = FooterHolder;
+    })
+    Library:AddToRegistry(FooterFiller, {
+        BackgroundColor3 = "TopbarColor";
+    })
+
     local FooterLine = Library:Create("Frame", {
         BackgroundColor3 = Library.CardOutlineColor;
         Size = UDim2.new(1, 0, 0, 1);
-        ZIndex = 1;
+        ZIndex = 2;
         Parent = FooterHolder;
     })
     Library:AddToRegistry(FooterLine, {
@@ -8902,7 +8930,7 @@ end
             })
 
             Library:CreateLabel({
-                Size = UDim2.new(1, -28, 0, 30);
+                Size = UDim2.new(1, -28, 0, 38);
                 Position = UDim2.new(0, 14, 0, 0);
                 TextSize = 12;
                 TextTransparency = 0.1;
@@ -8914,7 +8942,7 @@ end
 
             local TitleRule = Library:Create("Frame", {
                 BackgroundColor3 = Library.OutlineColor;
-                Position = UDim2.new(0, 14, 0, 30);
+                Position = UDim2.new(0, 14, 0, 38);
                 Size = UDim2.new(1, -28, 0, 1);
                 ZIndex = 5;
                 Parent = BoxInner;
@@ -8925,8 +8953,8 @@ end
 
             local Container = Library:Create("Frame", {
                 BackgroundTransparency = 1;
-                Position = UDim2.new(0, 14, 0, 38);
-                Size = UDim2.new(1, -24, 1, -38);
+                Position = UDim2.new(0, 14, 0, 47);
+                Size = UDim2.new(1, -24, 1, -47);
                 ZIndex = 1;
                 Parent = BoxInner;
             })
@@ -8946,8 +8974,8 @@ end
                     end
                 end
 
-                -- header (38) + rows + a little room at the bottom
-                BoxOuter.Size = UDim2.new(1, 0, 0, (38 * DPIScale + Size) + 6)
+                -- header (47) + rows + a little room at the bottom
+                BoxOuter.Size = UDim2.new(1, 0, 0, (47 * DPIScale + Size) + 6)
             end
 
             Groupbox.Container = Container
@@ -9003,14 +9031,14 @@ end
 
             local TabboxButtons = Library:Create("Frame", {
                 BackgroundTransparency = 1;
-                Position = UDim2.new(0, 10, 0, 3);
-                Size = UDim2.new(1, -20, 0, 24);
+                Position = UDim2.new(0, 10, 0, 5);
+                Size = UDim2.new(1, -20, 0, 28);
                 ZIndex = 5;
                 Parent = BoxInner;
             })
 
             Library:Create("UIListLayout", {
-                Padding = UDim.new(0, 2);
+                Padding = UDim.new(0, 4);
                 FillDirection = Enum.FillDirection.Horizontal;
                 HorizontalAlignment = Enum.HorizontalAlignment.Left;
                 SortOrder = Enum.SortOrder.LayoutOrder;
@@ -9021,7 +9049,7 @@ end
             -- same thin rule the groupbox titles have, under the tab strip
             local TabboxRule = Library:Create("Frame", {
                 BackgroundColor3 = Library.OutlineColor;
-                Position = UDim2.new(0, 14, 0, 30);
+                Position = UDim2.new(0, 14, 0, 38);
                 Size = UDim2.new(1, -28, 0, 1);
                 ZIndex = 5;
                 Parent = BoxInner;
@@ -9046,7 +9074,7 @@ end
                     BackgroundColor3 = Library.MainColor;
                     BackgroundTransparency = 1;
                     Corner = 7;
-                    Size = UDim2.new(0, ButtonWidth + 22, 1, 0);
+                    Size = UDim2.new(0, ButtonWidth + 30, 1, 0);
                     ZIndex = 6;
                     Parent = TabboxButtons;
                 })
@@ -9092,8 +9120,8 @@ end
 
                 local Container = Library:Create("Frame", {
                     BackgroundTransparency = 1;
-                    Position = UDim2.new(0, 14, 0, 38);
-                    Size = UDim2.new(1, -24, 1, -38);
+                    Position = UDim2.new(0, 14, 0, 47);
+                    Size = UDim2.new(1, -24, 1, -47);
                     ZIndex = 1;
                     Visible = false;
                     Parent = BoxInner;
@@ -9136,8 +9164,8 @@ end
                         end
                     end
 
-                    -- header (38) + rows + a little room at the bottom
-                    BoxOuter.Size = UDim2.new(1, 0, 0, (38 * DPIScale + Size) + 6)
+                    -- header (47) + rows + a little room at the bottom
+                    BoxOuter.Size = UDim2.new(1, 0, 0, (47 * DPIScale + Size) + 6)
                 end
 
                 Button.InputBegan:Connect(function(Input)
@@ -9297,11 +9325,6 @@ end
         Library:SetFade(Inner, Toggled and 1 or 0, AnimationInfo)
         TweenService:Create(WindowScale, AnimationInfo, { Scale = Toggled and 1 or Library.WindowClosedScale }):Play()
 
-        -- the shadow sits outside of Inner so it fades on its own
-        if Toggled then
-            WindowShadow.ImageTransparency = 1
-        end
-        TweenService:Create(WindowShadow, AnimationInfo, { ImageTransparency = Toggled and 0.35 or 1 }):Play()
 
         if Library.Blur then
             if Toggled and Library.BlurEnabled then
