@@ -98,7 +98,7 @@ local CustomImageManager = {}
 local CustomImageManagerAssets = {
     Cursor = {
         RobloxId = 9619665977,
-        Path = "MatchaLib/assets/Cursor.png",
+        Path = "NoctaliaLib/assets/Cursor.png",
         URL = BaseURL .. "assets/Cursor.png",
 
         Id = nil,
@@ -106,7 +106,7 @@ local CustomImageManagerAssets = {
 
     DropdownArrow = {
         RobloxId = 6282522798,
-        Path = "MatchaLib/assets/DropdownArrow.png",
+        Path = "NoctaliaLib/assets/DropdownArrow.png",
         URL = BaseURL .. "assets/DropdownArrow.png",
 
         Id = nil,
@@ -114,7 +114,7 @@ local CustomImageManagerAssets = {
 
     Checker = {
         RobloxId = 12977615774,
-        Path = "MatchaLib/assets/Checker.png",
+        Path = "NoctaliaLib/assets/Checker.png",
         URL = BaseURL .. "assets/Checker.png",
 
         Id = nil,
@@ -122,7 +122,7 @@ local CustomImageManagerAssets = {
 
     CheckerLong = {
         RobloxId = 12978095818,
-        Path = "MatchaLib/assets/CheckerLong.png",
+        Path = "NoctaliaLib/assets/CheckerLong.png",
         URL = BaseURL .. "assets/CheckerLong.png",
 
         Id = nil,
@@ -130,8 +130,25 @@ local CustomImageManagerAssets = {
 
     SaturationMap = {
         RobloxId = 4155801252,
-        Path = "MatchaLib/assets/SaturationMap.png",
+        Path = "NoctaliaLib/assets/SaturationMap.png",
         URL = BaseURL .. "assets/SaturationMap.png",
+
+        Id = nil,
+    },
+
+    -- Noto Sans Sundanese (the "full" build, the hinted one has no latin letters)
+    FontRegular = {
+        RobloxId = 0,
+        Path = "NoctaliaLib/assets/NotoSansSundanese-Regular.ttf",
+        URL = BaseURL .. "assets/NotoSansSundanese-Regular.ttf",
+
+        Id = nil,
+    },
+
+    FontBold = {
+        RobloxId = 0,
+        Path = "NoctaliaLib/assets/NotoSansSundanese-Bold.ttf",
+        URL = BaseURL .. "assets/NotoSansSundanese-Bold.ttf",
 
         Id = nil,
     }
@@ -227,6 +244,42 @@ do
     end
 end
 
+-- custom font: roblox wants a font family json that points at the downloaded ttf files
+local CustomFace, CustomFaceBold = nil, nil
+do
+    local Success = pcall(function()
+        if not (getcustomasset and writefile and isfile) then
+            return
+        end
+
+        local RegularPath = CustomImageManagerAssets.FontRegular.Path
+        local BoldPath = CustomImageManagerAssets.FontBold.Path
+
+        if not (isfile(RegularPath) and isfile(BoldPath)) then
+            return
+        end
+
+        local FamilyPath = "NoctaliaLib/assets/NotoSansSundanese.json"
+
+        writefile(FamilyPath, cloneref(game:GetService("HttpService")):JSONEncode({
+            name = "Noto Sans Sundanese",
+            faces = {
+                { name = "Regular", weight = 400, style = "normal", assetId = getcustomasset(RegularPath) },
+                { name = "Bold", weight = 700, style = "normal", assetId = getcustomasset(BoldPath) },
+            },
+        }))
+
+        local Family = getcustomasset(FamilyPath)
+
+        CustomFace = Font.new(Family, Enum.FontWeight.Regular, Enum.FontStyle.Normal)
+        CustomFaceBold = Font.new(Family, Enum.FontWeight.Bold, Enum.FontStyle.Normal)
+    end)
+
+    if not Success then
+        CustomFace, CustomFaceBold = nil, nil
+    end
+end
+
 local DPIScale = 1;
 local Library = {
     Registry = {};
@@ -236,7 +289,10 @@ local Library = {
     -- colors and font --
     FontColor = Color3.fromRGB(240, 240, 244);
     MainColor = Color3.fromRGB(22, 22, 27);
-    BackgroundColor = Color3.fromRGB(12, 12, 16);
+    BackgroundColor = Color3.fromHex("0c0b10");
+    TopbarColor = Color3.fromHex("08080c"); -- top bar and bottom bar
+    CardColor = Color3.fromHex("101014"); -- groupboxes / tabboxes
+    CardOutlineColor = Color3.fromHex("151419"); -- groupbox border
 
     AccentColor = Color3.fromRGB(205, 205, 214);
     DisabledAccentColor = Color3.fromRGB(95, 95, 104);
@@ -246,18 +302,27 @@ local Library = {
 
     DisabledTextColor = Color3.fromRGB(95, 95, 104);
 
-    RiskColor = Color3.fromRGB(255, 70, 70);
+    DangerColor = Color3.fromHex("914b41");
+    WarningColor = Color3.fromHex("817550");
     OnlineColor = Color3.fromRGB(64, 200, 110);
 
     Black = Color3.new(0, 0, 0);
-    Font = Enum.Font.Gotham;
+    Font = Enum.Font.Gotham; -- fallback when the custom font could not be loaded
+    FontFace = CustomFace; -- Noto Sans Sundanese
+    FontFaceBold = CustomFaceBold;
 
     -- panel style --
-    GlassTransparency = 0.04;
+    GlassTransparency = 0;
     ElementTransparency = 0;
     GroupboxTransparency = 0;
+    TransparencyEnabled = false;
     BlurEnabled = false;
-    BlurSize = 30;
+    BlurSize = 12;
+
+    -- backdrop --
+    DarkEnabled = true;
+    SnowEnabled = true;
+    DarkTransparency = 0.55;
     WindowClosedScale = 0.5;
     KeybindNotification = false;
 
@@ -414,7 +479,7 @@ type IconModule = {
 
 local FetchIcons, Icons = pcall(function()
     return (loadstring(
-        game:HttpGet("https://raw.githubusercontent.com/mstudio45/lucide-roblox-direct/refs/heads/main/source.lua")
+        game:HttpGet("https://raw.githubusercontent.com/NoctaliaLua/lucide-roblox-direct/refs/heads/main/source.lua")
     ) :: () -> IconModule)()
 end)
 
@@ -557,6 +622,20 @@ function Library:Create(Class, Properties)
         end
     end
 
+    -- every text object gets the custom font; bold enums map to the bold face
+    if Library.FontFace and typeof(_Instance) == "Instance" and (_Instance:IsA("TextLabel") or _Instance:IsA("TextButton") or _Instance:IsA("TextBox")) then
+        local RequestedFont = Properties.Font
+        local WantsBold = RequestedFont == Enum.Font.GothamBold or RequestedFont == Enum.Font.GothamBlack or RequestedFont == Enum.Font.SourceSansBold
+
+        if WantsBold then
+            _Instance.FontFace = Library.FontFaceBold or Library.FontFace
+        elseif RequestedFont ~= nil or _Instance:GetAttribute("CustomFontApplied") == nil then
+            _Instance.FontFace = Library.FontFace
+        end
+
+        _Instance:SetAttribute("CustomFontApplied", true)
+    end
+
     return _Instance
 end
 
@@ -584,9 +663,123 @@ function Library:AddStroke(Instance, ColorIdx, Transparency)
     return Stroke
 end
 
--- slightly lighter than the window, used for the cards the groupboxes sit on
+-- the color of the cards the groupboxes sit on
 function Library:GetCardColor()
-    return Library.BackgroundColor:Lerp(Library.MainColor, 0.4)
+    return Library.CardColor
+end
+
+-- soft drop shadow / glow: a stretched shadow texture sitting behind Parent, sized a bit larger than it
+function Library:AddShadow(Parent, Spread, Color, Transparency, Corner)
+    Spread = Spread or 14
+
+    local Shadow = Library:Create("ImageLabel", {
+        AnchorPoint = Vector2.new(0.5, 0.5);
+        BackgroundTransparency = 1;
+        Image = "rbxassetid://1316045217";
+        ImageColor3 = Color or Library.Black;
+        ImageTransparency = Transparency or 0.5;
+        Position = UDim2.fromScale(0.5, 0.5);
+        ScaleType = Enum.ScaleType.Slice;
+        Size = UDim2.new(1, Spread * 2, 1, Spread * 2);
+        SliceCenter = Rect.new(10, 10, 118, 118);
+        ZIndex = Parent.ZIndex - 1;
+        Name = "Shadow";
+        Parent = Parent;
+    })
+
+    return Shadow
+end
+
+-- the extra glow used on enabled toggles, tinted by a library color so themes recolor it
+function Library:AddGlow(Parent, ColorIdx, Spread, Transparency)
+    local Glow = Library:AddShadow(Parent, Spread or 6, Library[ColorIdx or "AccentColor"], Transparency or 0.8)
+    Glow.Name = "Glow"
+
+    Library:AddToRegistry(Glow, {
+        ImageColor3 = ColorIdx or "AccentColor";
+    })
+
+    return Glow
+end
+
+-- danger / warning: forces the label color (+ a faint halo) no matter the state of the element
+function Library:GetStatus(Element)
+    if Element.Danger then
+        return "DangerColor"
+    elseif Element.Warning then
+        return "WarningColor"
+    end
+
+    return nil
+end
+
+-- returns true when a status color was applied, so callers skip their normal text color
+function Library:ApplyStatus(Element, Label)
+    local Status = Library:GetStatus(Element)
+    local Halo = Label:FindFirstChild("StatusHalo")
+
+    if not Status then
+        if Halo then
+            Halo:Destroy()
+        end
+
+        return false
+    end
+
+    Label.TextColor3 = Library[Status]
+
+    local Reg = Library.RegistryMap[Label]
+    if not Reg then
+        Library:AddToRegistry(Label, {})
+        Reg = Library.RegistryMap[Label]
+    end
+    Reg.Properties.TextColor3 = Status
+
+    if not Halo then
+        Halo = Library:Create("UIStroke", {
+            ApplyStrokeMode = Enum.ApplyStrokeMode.Contextual;
+            Name = "StatusHalo";
+            Thickness = 1.5;
+            Transparency = 0.82;
+            Parent = Label;
+        })
+
+        Library:AddToRegistry(Halo, {
+            Color = Status;
+        })
+    end
+
+    Halo.Color = Library[Status]
+    Library.RegistryMap[Halo].Properties.Color = Status
+
+    return true
+end
+
+-- adds :SetDanger / :SetWarning to an element and reads Danger / Warning (any casing) from its Info
+function Library:SetupStatus(Element, Info, Refresh)
+    local function Read(Name)
+        local Value = Info[Name]
+        if Value == nil then
+            Value = Info[Name:lower()]
+        end
+
+        return Value == true
+    end
+
+    Element.Danger = Read("Danger")
+    Element.Warning = Read("Warning")
+
+    function Element:SetDanger(Bool)
+        Element.Danger = Bool == true
+        if Element.Danger then Element.Warning = false end
+        Refresh()
+    end
+
+    function Element:SetWarning(Bool)
+        Element.Warning = Bool == true
+        if Element.Warning then Element.Danger = false end
+        Refresh()
+    end
 end
 
 -- secondary text: the font color pulled toward the background
@@ -734,37 +927,35 @@ function Library:FlashButton(Inner)
 end
 
 -- turns every glass panel solid (or back) and keeps the fade cache in sync
+-- frames that should turn see-through when "Transparency" is on (the window, keybind menu, watermark)
+Library.GlassObjects = {}
+
+function Library:AddGlass(Inst)
+    table.insert(Library.GlassObjects, Inst)
+
+    if Library.TransparencyEnabled then
+        Inst.BackgroundTransparency = Library.GlassValue
+    end
+end
+
+Library.GlassValue = 0.15
+
 function Library:SetTransparency(Enabled)
     Library.TransparencyEnabled = Enabled
+    Library.GlassTransparency = Enabled and Library.GlassValue or 0
 
-    local Glass = 0.04
+    for Idx = #Library.GlassObjects, 1, -1 do
+        local Inst = Library.GlassObjects[Idx]
 
-    Library.GlassTransparency = Enabled and Glass or 0
-    Library.ElementTransparency = 0
-    Library.GroupboxTransparency = 0
-
-    for _, Inst in next, ScreenGui:GetDescendants() do
-        if not Inst:IsA("GuiObject") then
+        if not Inst.Parent then
+            table.remove(Library.GlassObjects, Idx)
             continue
         end
 
-        local Current = Inst.BackgroundTransparency
-        local Saved = Inst:GetAttribute("GlassOriginal")
+        Inst.BackgroundTransparency = Library.GlassTransparency
 
-        if not Enabled and not Saved and math.abs(Current - Glass) < 0.005 then
-            Inst:SetAttribute("GlassOriginal", Current)
-            Inst.BackgroundTransparency = 0
-
-            if FadeCache[Inst] then
-                FadeCache[Inst].BackgroundTransparency = 0
-            end
-        elseif Enabled and Saved then
-            Inst:SetAttribute("GlassOriginal", nil)
-            Inst.BackgroundTransparency = Saved
-
-            if FadeCache[Inst] then
-                FadeCache[Inst].BackgroundTransparency = Saved
-            end
+        if FadeCache[Inst] then
+            FadeCache[Inst].BackgroundTransparency = Library.GlassTransparency
         end
     end
 end
@@ -772,6 +963,9 @@ end
 function Library:PreloadFont()    pcall(function()
         local Probe = Instance.new("TextLabel")
         Probe.Font = Library.Font
+        if Library.FontFace then
+            Probe.FontFace = Library.FontFace
+        end
         Probe.Text = "AaBbCc 0123456789 []<>"
         Probe.TextSize = 14
         game:GetService("ContentProvider"):PreloadAsync({ Probe })
@@ -1358,13 +1552,43 @@ function Library:MapValue(Value, MinA, MaxA, MinB, MaxB)
     return (1 - ((Value - MinA) / (MaxA - MinA))) * MinB + ((Value - MinA) / (MaxA - MinA)) * MaxB
 end
 
+local TextBoundsCache = {}
+
 function Library:GetTextBounds(Text, Font, Size, Resolution)
     -- Ignores rich text formatting --
     if typeof(Resolution) == "number" then
         Resolution = Vector2.new(Resolution, 10000)
     end
 
-    local Bounds = TextService:GetTextSize(Text:gsub("<%/?[%w:]+[^>]*>", ""), Size, Font, Resolution or Vector2.new(1920, 1080))
+    local Stripped = Text:gsub("<%/?[%w:]+[^>]*>", "")
+
+    -- measure with the custom font, the enum fonts are a different width
+    if Library.FontFace then
+        local Width = Resolution and Resolution.X or 10000
+        local Key = Stripped .. "\0" .. tostring(Size) .. "\0" .. tostring(Width)
+
+        local Cached = TextBoundsCache[Key]
+        if Cached then
+            return Cached[1], Cached[2]
+        end
+
+        local Ok, Bounds = pcall(function()
+            local Params = Instance.new("GetTextBoundsParams")
+            Params.Text = Stripped
+            Params.Font = Library.FontFace
+            Params.Size = Size
+            Params.Width = Width
+
+            return TextService:GetTextBoundsAsync(Params)
+        end)
+
+        if Ok and Bounds then
+            TextBoundsCache[Key] = { Bounds.X, Bounds.Y }
+            return Bounds.X, Bounds.Y
+        end
+    end
+
+    local Bounds = TextService:GetTextSize(Stripped, Size, Font, Resolution or Vector2.new(1920, 1080))
     return Bounds.X, Bounds.Y
 end
 
@@ -1466,7 +1690,7 @@ function Library:Unload()
 
     ScreenGui:Destroy()
 
-    getgenv().Matcha = nil
+    getgenv().Noctalia = nil
 end
 
 function Library:OnUnload(Callback)
@@ -1730,7 +1954,7 @@ do
         do
             local KeybindsToggleContainer = Library:Create("Frame", {
                 BackgroundTransparency = 1;
-                Size = UDim2.new(1, 0, 0, 18);
+                Size = UDim2.new(1, 0, 0, 22);
                 Visible = false;
                 ZIndex = 110;
                 Parent = Library.KeybindContainer;
@@ -1738,8 +1962,8 @@ do
 
             local KeybindsToggleOuter = Library:Create("Frame", {
                 BackgroundColor3 = Color3.new(0, 0, 0);
-                Size = UDim2.new(0, 13, 0, 13);
-                Position = UDim2.new(0, 0, 0, 6);
+                Size = UDim2.new(0, 14, 0, 14);
+                Position = UDim2.new(0, 0, 0, 4);
                 Visible = true;
                 ZIndex = 110;
                 Parent = KeybindsToggleContainer;
@@ -1752,7 +1976,7 @@ do
             local KeybindsToggleInner = Library:Create("Frame", {
                 BackgroundColor3 = Library.MainColor;
                 BackgroundTransparency = Library.ElementTransparency;
-                Corner = 5;
+                Corner = 4;
                 Size = UDim2.new(1, 0, 1, 0);
                 ZIndex = 111;
                 Parent = KeybindsToggleOuter;
@@ -1760,27 +1984,19 @@ do
 
             Library:AddToRegistry(KeybindsToggleInner, {
                 BackgroundColor3 = "MainColor";
-                BorderColor3 = "OutlineColor";
             })
+
+            local KeybindsToggleStroke = Library:AddStroke(KeybindsToggleInner, "OutlineColor")
 
             local KeybindsToggleLabel = Library:CreateLabel({
                 BackgroundTransparency = 1;
                 Size = UDim2.new(0, 216, 1, 0);
-                Position = UDim2.new(1, 6, 0, -1);
-                TextSize = 14;
+                Position = UDim2.new(1, 8, 0, 0);
+                TextSize = 12;
                 Text = "";
                 TextXAlignment = Enum.TextXAlignment.Left;
                 ZIndex = 111;
                 Parent = KeybindsToggleInner;
-            })
-
-            Library:Create("UIListLayout", {
-                Padding = UDim.new(0, 4);
-                FillDirection = Enum.FillDirection.Horizontal;
-                HorizontalAlignment = Enum.HorizontalAlignment.Right;
-                VerticalAlignment = Enum.VerticalAlignment.Center;
-                SortOrder = Enum.SortOrder.LayoutOrder;
-                Parent = KeybindsToggleLabel;
             })
 
             local KeybindsToggleRegion = Library:Create("Frame", {
@@ -1798,14 +2014,17 @@ do
                 end
             )
 
+            -- lit rows use the accent for the box and full brightness text, idle rows are dim
             function KeybindsToggle:Display(State)
                 KeybindsToggleInner.BackgroundColor3 = State and Library.AccentColor or Library.MainColor
-                KeybindsToggleInner.BorderColor3 = State and Library.AccentColorDark or Library.OutlineColor
-                KeybindsToggleLabel.TextColor3 = State and Library.AccentColor or Library.FontColor
+                KeybindsToggleStroke.Color = State and Library.AccentColor or Library.OutlineColor
+                KeybindsToggleLabel.TextColor3 = State and Library.FontColor or Library:GetDimColor()
 
                 Library.RegistryMap[KeybindsToggleInner].Properties.BackgroundColor3 = State and "AccentColor" or "MainColor"
-                Library.RegistryMap[KeybindsToggleInner].Properties.BorderColor3 = State and "AccentColorDark" or "OutlineColor"
-                Library.RegistryMap[KeybindsToggleLabel].Properties.TextColor3 = State and "AccentColor" or "FontColor"
+                Library.RegistryMap[KeybindsToggleStroke].Properties.Color = State and "AccentColor" or "OutlineColor"
+                Library.RegistryMap[KeybindsToggleLabel].Properties.TextColor3 = State and "FontColor" or function()
+                    return Library:GetDimColor()
+                end
             end
 
             function KeybindsToggle:SetText(Text)
@@ -1820,8 +2039,9 @@ do
                 KeybindsToggle.Normal = bool
 
                 KeybindsToggleInner.BackgroundTransparency = if KeybindsToggle.Normal then 1 else Library.ElementTransparency
+                KeybindsToggleStroke.Enabled = not KeybindsToggle.Normal
 
-                KeybindsToggleLabel.Position = if KeybindsToggle.Normal then UDim2.new(1, -13, 0, -1) else UDim2.new(1, 6, 0, -1)
+                KeybindsToggleLabel.Position = if KeybindsToggle.Normal then UDim2.new(1, -14, 0, 0) else UDim2.new(1, 8, 0, 0)
             end
 
             KeyPicker.DoClick = function(...) end --// make luau lsp shut up
@@ -1839,7 +2059,6 @@ do
             end))
 
             KeybindsToggle.Loaded = true
-        end
 
         local ModeSelectOuter = Library:Create("Frame", {
             BackgroundTransparency = 1;
@@ -2007,18 +2226,18 @@ do
 
             for _, Frame in next, Library.KeybindContainer:GetChildren() do
                 if Frame:IsA("Frame") and Frame.Visible then
-                    YSize = YSize + 18
+                    YSize = YSize + 22
                     local Label = Frame:FindFirstChild("TextLabel", true)
                     if not Label then continue end
                     
-                    local LabelSize = Label.TextBounds.X + 20
+                    local LabelSize = Label.TextBounds.X + 40
                     if (LabelSize > XSize) then
                         XSize = LabelSize
                     end
                 end
             end
 
-            Library.KeybindFrame.Size = UDim2.new(0, math.max(XSize + 10, 220), 0, (YSize + 23 + 6) * DPIScale)
+            Library.KeybindFrame.Size = UDim2.new(0, math.max(XSize + 20, 190), 0, (YSize + 28 + 14) * DPIScale)
             UpdateMenuOuterPos()
         end
 
@@ -2375,17 +2594,18 @@ do
             BackgroundColor3 = ColorPicker.Value;
             BackgroundTransparency = ColorPicker.Transparency;
             Corner = 5;
-            Size = UDim2.new(0, 28, 0, 15);
+            Size = UDim2.new(0, 18, 0, 18);
             ZIndex = 6;
             Parent = ToggleLabel;
         })
+        Library:AddStroke(DisplayFrame, "OutlineColor")
 
         -- Transparency image taken from https://github.com/matas3535/SplixPrivateDrawingLibrary/blob/main/Library.lua cus i'm lazy
         -- local CheckerFrame =
         Library:Create("ImageLabel", {
             BackgroundTransparency = 1;
             Corner = 5;
-            Size = UDim2.new(0, 28, 0, 15);
+            Size = UDim2.new(1, 0, 1, 0);
             ZIndex = 5;
             Image = CustomImageManager.GetAsset("Checker");
             Visible = not not Info.Transparency;
@@ -3750,6 +3970,7 @@ do
             Data.Text = Params.Text or ""
             Data.DoesWrap = Params.DoesWrap or false
             Data.Idx = select(1, ...)
+            Data.Params = Params
         else
             Data.Text = select(1, ...) or ""
             Data.DoesWrap = select(2, ...) or false
@@ -3777,6 +3998,13 @@ do
             RichText = true;
         })
         Library:DimLabel(TextLabel)
+
+        Library:SetupStatus(Label, Data.Params or {}, function()
+            if not Library:ApplyStatus(Label, TextLabel) then
+                Library:DimLabel(TextLabel)
+            end
+        end)
+        Library:ApplyStatus(Label, TextLabel)
 
         if Data.DoesWrap then
             local Y = select(2, Library:GetTextBounds(Data.Text, Library.Font, 12 * DPIScale, Vector2.new(TextLabel.AbsoluteSize.X, math.huge)))
@@ -3978,7 +4206,17 @@ do
 
             function SubButton:UpdateColors()
                 SubButton.Label.TextColor3 = SubButton.Disabled and Library.DisabledAccentColor or Library.FontColor
+
+                if Library.RegistryMap[SubButton.Label] then
+                    Library.RegistryMap[SubButton.Label].Properties.TextColor3 = SubButton.Disabled and "DisabledAccentColor" or "FontColor"
+                end
+
+                Library:ApplyStatus(SubButton, SubButton.Label)
             end
+
+            Library:SetupStatus(SubButton, SubButton, function()
+                SubButton:UpdateColors()
+            end)
 
             function SubButton:AddToolTip(tooltip, disabledTooltip)
                 if typeof(tooltip) == "string" or typeof(disabledTooltip) == "string" then
@@ -4024,7 +4262,17 @@ do
 
         function Button:UpdateColors()
             Button.Label.TextColor3 = Button.Disabled and Library.DisabledAccentColor or Library.FontColor
+
+            if Library.RegistryMap[Button.Label] then
+                Library.RegistryMap[Button.Label].Properties.TextColor3 = Button.Disabled and "DisabledAccentColor" or "FontColor"
+            end
+
+            Library:ApplyStatus(Button, Button.Label)
         end
+
+        Library:SetupStatus(Button, Button, function()
+            Button:UpdateColors()
+        end)
 
         function Button:AddToolTip(tooltip, disabledTooltip)
             if typeof(tooltip) == "string" or typeof(disabledTooltip) == "string" then
@@ -4198,7 +4446,13 @@ do
             Box.TextColor3 = Textbox.Disabled and Library.DisabledAccentColor or Library.FontColor
 
             Library.RegistryMap[Box].Properties.TextColor3 = Textbox.Disabled and "DisabledAccentColor" or "FontColor"
+
+            Library:ApplyStatus(Textbox, InputLabel)
         end
+
+        Library:SetupStatus(Textbox, Info, function()
+            Textbox:UpdateColors()
+        end)
 
         function Textbox:Display()
             TextBoxOuter.Visible = Textbox.Visible
@@ -4324,7 +4578,6 @@ do
             Type = "Toggle";
             Visible = if typeof(Info.Visible) == "boolean" then Info.Visible else true;
             Disabled = if typeof(Info.Disabled) == "boolean" then Info.Disabled else false;
-            Risky = if typeof(Info.Risky) == "boolean" then Info.Risky else false;
             OriginalText = Info.Text; Text = Info.Text;
 
             Callback = Info.Callback or function(Value) end;
@@ -4371,47 +4624,7 @@ do
 
         local ToggleStroke = Library:AddStroke(ToggleInner, "OutlineColor")
 
-        -- tick shown while the toggle is on: a lucide check when the icon module loaded, a small dot otherwise
-        local CheckIcon = Library:GetIcon("check")
-        local CheckMark
-        local CheckProp
-
-        if CheckIcon then
-            CheckProp = "ImageTransparency"
-            CheckMark = Library:Create("ImageLabel", {
-                AnchorPoint = Vector2.new(0.5, 0.5);
-                BackgroundTransparency = 1;
-                Image = CheckIcon.Url;
-                ImageColor3 = Library.BackgroundColor;
-                ImageRectOffset = CheckIcon.ImageRectOffset;
-                ImageRectSize = CheckIcon.ImageRectSize;
-                ImageTransparency = 1;
-                Position = UDim2.fromScale(0.5, 0.5);
-                Size = UDim2.fromOffset(12, 12);
-                ZIndex = 7;
-                Parent = ToggleInner;
-            })
-
-            Library:AddToRegistry(CheckMark, {
-                ImageColor3 = "BackgroundColor";
-            })
-        else
-            CheckProp = "BackgroundTransparency"
-            CheckMark = Library:Create("Frame", {
-                AnchorPoint = Vector2.new(0.5, 0.5);
-                BackgroundColor3 = Library.BackgroundColor;
-                BackgroundTransparency = 1;
-                Corner = 2;
-                Position = UDim2.fromScale(0.5, 0.5);
-                Size = UDim2.fromOffset(8, 8);
-                ZIndex = 7;
-                Parent = ToggleInner;
-            })
-
-            Library:AddToRegistry(CheckMark, {
-                BackgroundColor3 = "BackgroundColor";
-            })
-        end
+        local ToggleGlow = Library:AddGlow(ToggleOuter, "AccentColor", 7, 1)
 
         local ToggleLabel = Library:CreateLabel({
             Size = UDim2.new(1, -28, 1, 0); -- size of toggle box (18) + gap (10)
@@ -4504,15 +4717,15 @@ do
             end
         end
 
-        local function SetCheck(Visible)
-            local Goal = Visible and 0 or 1
+        -- a soft accent glow behind the box while the toggle is on
+        local function SetGlow(On)
+            local Goal = On and 0.72 or 1
 
             if ToggleReady then
-                TweenService:Create(CheckMark, TweenInfo.new(0.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { [CheckProp] = Goal }):Play()
+                TweenService:Create(ToggleGlow, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { ImageTransparency = Goal }):Play()
             else
-                CheckMark[CheckProp] = Goal
+                ToggleGlow.ImageTransparency = Goal
             end
-        end
 
         local function DimColor()
             return Library:GetDimColor()
@@ -4523,21 +4736,20 @@ do
                 ToggleLabel.TextColor3 = Library.DisabledTextColor
 
                 SetToggleColor(Toggle.Value and Library.DisabledAccentColor or Library.MainColor)
-                SetCheck(Toggle.Value)
+                SetGlow(false)
                 ToggleStroke.Color = Library.DisabledOutlineColor
 
                 Library.RegistryMap[ToggleInner].Properties.BackgroundColor3 = Toggle.Value and "DisabledAccentColor" or "MainColor"
                 Library.RegistryMap[ToggleStroke].Properties.Color = "DisabledOutlineColor"
                 Library.RegistryMap[ToggleLabel].Properties.TextColor3 = "DisabledTextColor"
 
+                Library:ApplyStatus(Toggle, ToggleLabel)
+
                 return
             end
 
             -- off rows are dim, on rows read at full brightness
-            if Toggle.Risky then
-                ToggleLabel.TextColor3 = Library.RiskColor
-                Library.RegistryMap[ToggleLabel].Properties.TextColor3 = "RiskColor"
-            elseif Toggle.Value then
+            if Toggle.Value then
                 ToggleLabel.TextColor3 = Library.FontColor
                 Library.RegistryMap[ToggleLabel].Properties.TextColor3 = "FontColor"
             else
@@ -4545,13 +4757,15 @@ do
                 Library.RegistryMap[ToggleLabel].Properties.TextColor3 = DimColor
             end
 
+            -- danger / warning force their own color on top of that
+            Library:ApplyStatus(Toggle, ToggleLabel)
+
             SetToggleColor(Toggle.Value and Library.AccentColor or Library.MainColor)
-            SetCheck(Toggle.Value)
+            SetGlow(Toggle.Value)
             ToggleStroke.Color = Toggle.Value and Library.AccentColor or Library.OutlineColor
 
             Library.RegistryMap[ToggleInner].Properties.BackgroundColor3 = Toggle.Value and "AccentColor" or "MainColor"
             Library.RegistryMap[ToggleStroke].Properties.Color = Toggle.Value and "AccentColor" or "OutlineColor"
-        end
 
         function Toggle:OnChanged(Func)
             Toggle.Changed = Func
@@ -4632,12 +4846,9 @@ do
             end
         end)
 
-        if Toggle.Risky == true then
-            Library:RemoveFromRegistry(ToggleLabel)
-
-            ToggleLabel.TextColor3 = Library.RiskColor
-            Library:AddToRegistry(ToggleLabel, { TextColor3 = "RiskColor" })
-        end
+        Library:SetupStatus(Toggle, Info, function()
+            Toggle:Display()
+        end)
 
         Toggle:Display()
         ToggleReady = true
@@ -4818,7 +5029,13 @@ do
 
             Library.RegistryMap[Fill].Properties.BackgroundColor3 = Slider.Disabled and "DisabledAccentColor" or "AccentColor"
             Library.RegistryMap[Knob].Properties.BackgroundColor3 = Slider.Disabled and "DisabledAccentColor" or "AccentColor"
+
+            Library:ApplyStatus(Slider, SliderText)
         end
+
+        Library:SetupStatus(Slider, Info, function()
+            Slider:UpdateColors()
+        end)
 
         function Slider:Display()
             local CustomDisplayText = nil
@@ -5281,7 +5498,15 @@ do
 
             ItemList.TextColor3 = Dropdown.Disabled and Library.DisabledTextColor or Library.FontColor
             DropdownArrow.ImageColor3 = Dropdown.Disabled and Library.DisabledTextColor or Library.FontColor
+
+            if DropdownLabel then
+                Library:ApplyStatus(Dropdown, DropdownLabel)
+            end
         end
+
+        Library:SetupStatus(Dropdown, Info, function()
+            Dropdown:UpdateColors()
+        end)
 
         function Dropdown:Display()
             local Values = Dropdown.Values
@@ -6486,7 +6711,7 @@ do
                 return Library:GetCardColor()
             end;
         })
-        Library:AddStroke(BoxOuter, "OutlineColor")
+        Library:AddStroke(BoxOuter, "CardOutlineColor")
 
         local BoxInner = Library:Create("Frame", {
             BackgroundTransparency = 1;
@@ -6578,48 +6803,65 @@ do
         Parent = ScreenGui;
     })
 
+    Library:AddShadow(KeybindOuter, 22, Library.Black, 0.35)
+
+    -- same look as the main window: dark body, a darker header strip, a thin border
     local KeybindInner = Library:Create("Frame", {
         ClipsDescendants = true;
-        BackgroundColor3 = Library.MainColor;
+        BackgroundColor3 = Library.BackgroundColor;
         BackgroundTransparency = Library.GlassTransparency;
-        Corner = 5;
+        Corner = 10;
         Size = UDim2.new(1, 0, 1, 0);
         ZIndex = 101;
         Parent = KeybindOuter;
     })
 
     Library:AddToRegistry(KeybindInner, {
-        BackgroundColor3 = "MainColor";
+        BackgroundColor3 = "BackgroundColor";
     }, true)
+    Library:AddStroke(KeybindInner, "CardOutlineColor")
+    Library:AddGlass(KeybindInner)
 
-    local ColorFrame = Library:Create("Frame", {
-        BackgroundColor3 = Library.AccentColor;
-        BackgroundTransparency = Library.GlassTransparency;
-        Position = UDim2.new(0, 0, 0, 0);
-        Size = UDim2.new(0, 3, 1, 0);
+    local KeybindHeader = Library:Create("Frame", {
+        BackgroundColor3 = Library.TopbarColor;
+        Size = UDim2.new(1, 0, 0, 28);
         ZIndex = 102;
         Parent = KeybindInner;
     })
 
-    Library:AddToRegistry(ColorFrame, {
-        BackgroundColor3 = "AccentColor";
+    Library:AddToRegistry(KeybindHeader, {
+        BackgroundColor3 = "TopbarColor";
+    }, true)
+
+    local KeybindHeaderLine = Library:Create("Frame", {
+        BackgroundColor3 = Library.CardOutlineColor;
+        Position = UDim2.new(0, 0, 1, -1);
+        Size = UDim2.new(1, 0, 0, 1);
+        ZIndex = 103;
+        Parent = KeybindHeader;
+    })
+
+    Library:AddToRegistry(KeybindHeaderLine, {
+        BackgroundColor3 = "CardOutlineColor";
     }, true)
 
     local _KeybindLabel = Library:CreateLabel({
-        Size = UDim2.new(1, 0, 0, 20);
-        Position = UDim2.fromOffset(0, 2),
-        TextXAlignment = Enum.TextXAlignment.Center,
+        Position = UDim2.fromOffset(12, 0);
+        Size = UDim2.new(1, -24, 1, 0);
+        TextSize = 12;
+        TextXAlignment = Enum.TextXAlignment.Left;
 
         Text = "Keybinds";
         ZIndex = 104;
-        Parent = KeybindInner;
+        Parent = KeybindHeader;
     })
-    Library:MakeDraggable(KeybindOuter)
+    Library:DimLabel(_KeybindLabel)
+    Library:MakeDraggable(KeybindOuter, 28)
 
     local KeybindContainer = Library:Create("Frame", {
         BackgroundTransparency = 1;
-        Size = UDim2.new(1, 0, 1, -20);
-        Position = UDim2.new(0, 0, 0, 20);
+        Size = UDim2.new(1, 0, 1, -28);
+        Position = UDim2.new(0, 0, 0, 28);
         ZIndex = 1;
         Parent = KeybindInner;
     })
@@ -6631,71 +6873,336 @@ do
     })
 
     Library:Create("UIPadding", {
-        PaddingLeft = UDim.new(0, 9),
+        PaddingLeft = UDim.new(0, 12),
+        PaddingRight = UDim.new(0, 12),
+        PaddingTop = UDim.new(0, 7),
         Parent = KeybindContainer,
     })
 
     Library.KeybindFrame = KeybindOuter
     Library.KeybindContainer = KeybindContainer
-    Library:MakeDraggable(KeybindOuter)
 end
 
 --// Watermark \\--
+-- [Title] [badge] | segment | segment ... on a dark pill, every piece is optional
 do
     local WatermarkOuter = Library:Create("Frame", {
-        AnchorPoint = Vector2.new(0.5, 0);
-        Position = UDim2.new(0.5, 0, 0, 15);
-        Size = UDim2.new(0, 260, 0, 34);
+        AutomaticSize = Enum.AutomaticSize.X;
+        BackgroundColor3 = Library.TopbarColor;
+        BackgroundTransparency = Library.GlassTransparency;
+        Corner = 9;
+        Position = UDim2.new(0, 14, 0, 6);
+        Size = UDim2.new(0, 0, 0, 30);
         ZIndex = 200;
         Visible = false;
         Parent = ScreenGui;
     })
 
-    local WatermarkInner = Library:Create("Frame", {
-        ClipsDescendants = true;
-        BackgroundColor3 = Library.MainColor;
-        BackgroundTransparency = Library.GlassTransparency;
-        Corner = 5;
-        Size = UDim2.new(1, 0, 1, 0);
-        ZIndex = 201;
+    Library:AddToRegistry(WatermarkOuter, {
+        BackgroundColor3 = "TopbarColor";
+    })
+    Library:AddStroke(WatermarkOuter, "OutlineColor")
+    Library:AddGlass(WatermarkOuter)
+    Library:AddShadow(WatermarkOuter, 18, Library.Black, 0.4)
+
+    Library:Create("UIPadding", {
+        PaddingLeft = UDim.new(0, 13);
+        PaddingRight = UDim.new(0, 13);
         Parent = WatermarkOuter;
     })
 
-    Library:AddToRegistry(WatermarkInner, {
+    Library:Create("UIListLayout", {
+        Padding = UDim.new(0, 10);
+        FillDirection = Enum.FillDirection.Horizontal;
+        SortOrder = Enum.SortOrder.LayoutOrder;
+        VerticalAlignment = Enum.VerticalAlignment.Center;
+        Parent = WatermarkOuter;
+    })
+
+    local TitleLabel = Library:CreateLabel({
+        AutomaticSize = Enum.AutomaticSize.X;
+        Font = Enum.Font.GothamBold;
+        LayoutOrder = 1;
+        Size = UDim2.new(0, 0, 1, 0);
+        Text = "";
+        TextSize = 12;
+        TextYAlignment = Enum.TextYAlignment.Center;
+        Visible = false;
+        ZIndex = 203;
+        Parent = WatermarkOuter;
+    })
+
+    local BadgeFrame = Library:Create("Frame", {
+        BackgroundColor3 = Library.MainColor;
+        Corner = 8;
+        LayoutOrder = 2;
+        Size = UDim2.fromOffset(30, 16);
+        Visible = false;
+        ZIndex = 203;
+        Parent = WatermarkOuter;
+    })
+    Library:AddToRegistry(BadgeFrame, {
         BackgroundColor3 = "MainColor";
     })
+    Library:AddStroke(BadgeFrame, "OutlineColor")
 
-
-    local InnerFrame = Library:Create("Frame", {
-        BackgroundTransparency = 1;
-        Position = UDim2.new(0, 1, 0, 1);
-        Size = UDim2.new(1, -2, 1, -2);
-        ZIndex = 202;
-        Parent = WatermarkInner;
-    })
-
-    local WatermarkLabel = Library:CreateLabel({
-        Position = UDim2.new(0, 0, 0, 0);
+    local BadgeLabel = Library:CreateLabel({
         Size = UDim2.new(1, 0, 1, 0);
-        TextSize = 16;
+        Text = "";
+        TextSize = 10;
         TextXAlignment = Enum.TextXAlignment.Center;
         TextYAlignment = Enum.TextYAlignment.Center;
-        ZIndex = 203;
-        Parent = InnerFrame;
+        ZIndex = 204;
+        Parent = BadgeFrame;
     })
 
+    local Segments = {}
+
+    local function GetSegment(Idx)
+        local Segment = Segments[Idx]
+        if Segment then
+            return Segment
+        end
+
+        Segment = {}
+
+        Segment.Divider = Library:Create("Frame", {
+            BackgroundColor3 = Library.OutlineColor;
+            LayoutOrder = 10 + Idx * 2;
+            Size = UDim2.fromOffset(1, 14);
+            ZIndex = 203;
+            Parent = WatermarkOuter;
+        })
+        Library:AddToRegistry(Segment.Divider, {
+            BackgroundColor3 = "OutlineColor";
+        })
+
+        Segment.Holder = Library:Create("Frame", {
+            AutomaticSize = Enum.AutomaticSize.X;
+            BackgroundTransparency = 1;
+            LayoutOrder = 11 + Idx * 2;
+            Size = UDim2.new(0, 0, 1, 0);
+            ZIndex = 203;
+            Parent = WatermarkOuter;
+        })
+
+        Library:Create("UIListLayout", {
+            Padding = UDim.new(0, 4);
+            FillDirection = Enum.FillDirection.Horizontal;
+            SortOrder = Enum.SortOrder.LayoutOrder;
+            VerticalAlignment = Enum.VerticalAlignment.Center;
+            Parent = Segment.Holder;
+        })
+
+        Segment.Main = Library:CreateLabel({
+            AutomaticSize = Enum.AutomaticSize.X;
+            LayoutOrder = 1;
+            Size = UDim2.new(0, 0, 1, 0);
+            TextSize = 12;
+            TextYAlignment = Enum.TextYAlignment.Center;
+            ZIndex = 204;
+            Parent = Segment.Holder;
+        })
+
+        Segment.Suffix = Library:CreateLabel({
+            AutomaticSize = Enum.AutomaticSize.X;
+            LayoutOrder = 2;
+            Size = UDim2.new(0, 0, 1, 0);
+            TextSize = 12;
+            TextYAlignment = Enum.TextYAlignment.Center;
+            ZIndex = 204;
+            Parent = Segment.Holder;
+        })
+        Library:DimLabel(Segment.Suffix)
+
+        Segments[Idx] = Segment
+        return Segment
+    end
+
     Library.Watermark = WatermarkOuter
-    Library.WatermarkText = WatermarkLabel
     Library:MakeDraggable(Library.Watermark)
 
     function Library:SetWatermarkVisibility(Bool)
         Library.Watermark.Visible = Bool
     end
 
+    -- Title: bold text on the left, Badge: small pill next to it (both optional)
+    function Library:SetWatermarkTitle(Title, Badge)
+        Title = typeof(Title) == "string" and Title or ""
+        Badge = typeof(Badge) == "string" and Badge or ""
+
+        TitleLabel.Text = Title
+        TitleLabel.Visible = Title ~= ""
+
+        BadgeLabel.Text = Badge
+        BadgeFrame.Visible = Badge ~= ""
+
+        if Badge ~= "" then
+            local Width = Library:GetTextBounds(Badge, Library.Font, 10)
+            BadgeFrame.Size = UDim2.fromOffset(math.max(28, math.ceil(Width) + 16), 16)
+        end
+    end
+
+    -- List entries are either a string or { Text = "239", Suffix = " FPS", Color = Color3 | "OnlineColor", Bold = true }
+    function Library:SetWatermarkSegments(List)
+        for Idx, Entry in ipairs(List) do
+            if typeof(Entry) == "string" then
+                Entry = { Text = Entry }
+            end
+
+            local Segment = GetSegment(Idx)
+
+            Segment.Divider.Visible = true
+            Segment.Holder.Visible = true
+
+            Segment.Main.Text = tostring(Entry.Text or "")
+            Segment.Suffix.Text = tostring(Entry.Suffix or "")
+            Segment.Suffix.Visible = Entry.Suffix ~= nil and Entry.Suffix ~= ""
+
+            local Color = Entry.Color
+            if typeof(Color) == "string" then
+                Color = Library[Color]
+            end
+
+            -- a plain segment is dim, a colored or bold one stands out
+            if typeof(Color) == "Color3" then
+                Library:RemoveFromRegistry(Segment.Main)
+                Segment.Main.TextColor3 = Color
+            elseif Entry.Bold then
+                Library:RemoveFromRegistry(Segment.Main)
+                Segment.Main.TextColor3 = Library.FontColor
+                Library:AddToRegistry(Segment.Main, { TextColor3 = "FontColor" })
+            else
+                Library:DimLabel(Segment.Main)
+            end
+
+            Segment.Main.FontFace = (Entry.Bold and Library.FontFaceBold or Library.FontFace) or Segment.Main.FontFace
+        end
+
+        for Idx = #List + 1, #Segments do
+            Segments[Idx].Divider.Visible = false
+            Segments[Idx].Holder.Visible = false
+        end
+    end
+
+    -- old single string API: "a | b | c" becomes three segments
     function Library:SetWatermark(Text)
-        local X, Y = Library:GetTextBounds(Text, Library.Font, 16 * DPIScale)
-        Library.Watermark.Size = UDim2.new(0, X + 40, 0, Y + 18)
-        Library.WatermarkText.Text = Text
+        local List = {}
+
+        for Part in string.gmatch(tostring(Text), "[^|]+") do
+            table.insert(List, Trim(Part))
+        end
+
+        Library:SetWatermarkSegments(List)
+    end
+end
+
+--// Backdrop: dark overlay + snow behind the menu \\--
+do
+    local Backdrop = Library:Create("Frame", {
+        BackgroundTransparency = 1;
+        ClipsDescendants = true;
+        Name = "Backdrop";
+        Position = UDim2.new(0, 0, 0, -120);
+        Size = UDim2.new(1, 0, 1, 240);
+        Visible = false;
+        ZIndex = 0;
+        Parent = ScreenGui;
+    })
+
+    local Dim = Library:Create("Frame", {
+        BackgroundColor3 = Library.Black;
+        BackgroundTransparency = 1;
+        Size = UDim2.fromScale(1, 1);
+        ZIndex = 0;
+        Parent = Backdrop;
+    })
+
+    local Flakes = {}
+    local FlakeCount = 70
+    local Random = Random.new()
+
+    for Idx = 1, FlakeCount do
+        local Size = Random:NextInteger(2, 5)
+
+        local Flake = Library:Create("Frame", {
+            BackgroundColor3 = Color3.new(1, 1, 1);
+            BackgroundTransparency = 1;
+            Corner = 3;
+            Size = UDim2.fromOffset(Size, Size);
+            ZIndex = 0;
+            Parent = Backdrop;
+        })
+
+        Flakes[Idx] = {
+            Frame = Flake;
+            X = Random:NextNumber(0, 1);
+            Y = Random:NextNumber(0, 1);
+            Speed = Random:NextNumber(18, 55) * (Size / 3); -- bigger flakes fall faster
+            Sway = Random:NextNumber(6, 22);
+            SwaySpeed = Random:NextNumber(0.4, 1.2);
+            Phase = Random:NextNumber(0, math.pi * 2);
+            Base = Random:NextNumber(0.35, 0.8); -- transparency while fully shown
+        }
+    end
+
+    local DarkAlpha = 0
+    local SnowAlpha = 0
+    local Clock = 0
+
+    Library:GiveSignal(RunService.RenderStepped:Connect(function(DeltaTime)
+        if Library.Unloaded then
+            return
+        end
+
+        local Open = Library.Toggled == true
+        local Blend = math.min(1, DeltaTime * 9)
+
+        DarkAlpha = DarkAlpha + (((Open and Library.DarkEnabled) and 1 or 0) - DarkAlpha) * Blend
+        SnowAlpha = SnowAlpha + (((Open and Library.SnowEnabled) and 1 or 0) - SnowAlpha) * Blend
+
+        local Show = DarkAlpha > 0.01 or SnowAlpha > 0.01
+        if Backdrop.Visible ~= Show then
+            Backdrop.Visible = Show
+        end
+
+        if not Show then
+            return
+        end
+
+        Dim.BackgroundTransparency = 1 - (1 - Library.DarkTransparency) * DarkAlpha
+
+        if SnowAlpha <= 0.01 then
+            return
+        end
+
+        Clock = Clock + DeltaTime
+
+        local Height = math.max(Backdrop.AbsoluteSize.Y, 1)
+        local Width = math.max(Backdrop.AbsoluteSize.X, 1)
+
+        for _, Flake in ipairs(Flakes) do
+            Flake.Y = Flake.Y + (Flake.Speed * DeltaTime) / Height
+
+            if Flake.Y > 1.02 then
+                Flake.Y = -0.02
+                Flake.X = Random:NextNumber(0, 1)
+            end
+
+            Flake.Frame.Position = UDim2.fromOffset(
+                Flake.X * Width + math.sin(Clock * Flake.SwaySpeed + Flake.Phase) * Flake.Sway,
+                Flake.Y * Height
+            )
+            Flake.Frame.BackgroundTransparency = 1 - (1 - Flake.Base) * SnowAlpha
+        end
+    end))
+
+    function Library:SetDark(Enabled)
+        Library.DarkEnabled = Enabled == true
+    end
+
+    function Library:SetSnow(Enabled)
+        Library.SnowEnabled = Enabled == true
     end
 end
 
@@ -6976,7 +7483,7 @@ function Library:CreateWindow(...)
     end
 
     if WindowInfo.Size == UDim2.fromOffset(0, 0) then
-        WindowInfo.Size = if Library.IsMobile then UDim2.fromOffset(620, math.clamp(ViewportSize.Y - 35, 200, 640)) else UDim2.fromOffset(620, 640)
+        WindowInfo.Size = if Library.IsMobile then UDim2.fromOffset(605, math.clamp(ViewportSize.Y - 35, 200, 970)) else UDim2.fromOffset(605, 970)
     end
 
     Library.NotifySide = WindowInfo.NotifySide
@@ -7003,7 +7510,7 @@ function Library:CreateWindow(...)
         Name = "Window";
     })
     LibraryMainOuterFrame = Outer
-    Library:MakeDraggable(Outer, 54, true)
+    Library:MakeDraggable(Outer, 44, true)
 
     -- the visible window; everything inside it is faded together by Library:SetFade
     local Inner = Library:Create("Frame", {
@@ -7017,8 +7524,12 @@ function Library:CreateWindow(...)
         ZIndex = 1;
         Parent = Outer;
     })
-    Library:AddStroke(Inner, "OutlineColor")
+    Library:AddStroke(Inner, "CardOutlineColor")
+    Library:AddGlass(Inner)
     LibraryMainInnerFrame = Inner
+
+    -- black drop shadow around the whole window
+    local WindowShadow = Library:AddShadow(Outer, 26, Library.Black, 0.35)
     if WindowInfo.Resizable then Library:MakeResizable(Outer, Library.MinSize, Inner) end
 
     local WindowScale = Library:Create("UIScale", {
@@ -7031,23 +7542,46 @@ function Library:CreateWindow(...)
     })
 
     local WindowBlur = Instance.new("BlurEffect")
-    WindowBlur.Name = "MatchaBlur"
+    WindowBlur.Name = "NoctaliaBlur"
     WindowBlur.Enabled = false
     WindowBlur.Size = 0
     pcall(function() WindowBlur.Parent = Lighting end)
     Library.Blur = WindowBlur
 
-    -- header: title, subtitle, a badge and the username on the right
-    local HeaderHeight = 54
+    -- layout: 44px top bar, the pill row, the pages, an optional bottom bar
+    local HeaderHeight = 44
+    local TabRowTop = HeaderHeight + 8
     local TabRowHeight = 30
+    local ContentTop = TabRowTop + TabRowHeight + 10
     local FooterHeight = 32
+
+    local Topbar = Library:Create("Frame", {
+        BackgroundColor3 = Library.TopbarColor;
+        Size = UDim2.new(1, 0, 0, HeaderHeight);
+        ZIndex = 1;
+        Parent = Inner;
+    })
+    Library:AddToRegistry(Topbar, {
+        BackgroundColor3 = "TopbarColor";
+    })
+
+    local TopbarLine = Library:Create("Frame", {
+        BackgroundColor3 = Library.CardOutlineColor;
+        Position = UDim2.new(0, 0, 1, -1);
+        Size = UDim2.new(1, 0, 0, 1);
+        ZIndex = 1;
+        Parent = Topbar;
+    })
+    Library:AddToRegistry(TopbarLine, {
+        BackgroundColor3 = "CardOutlineColor";
+    })
 
     local HeaderLeft = Library:Create("Frame", {
         BackgroundTransparency = 1;
-        Position = UDim2.new(0, 20, 0, 0);
-        Size = UDim2.new(1, -150, 0, HeaderHeight);
+        Position = UDim2.new(0, 18, 0, 0);
+        Size = UDim2.new(1, -150, 1, 0);
         ZIndex = 1;
-        Parent = Inner;
+        Parent = Topbar;
     })
 
     Library:Create("UIListLayout", {
@@ -7066,6 +7600,7 @@ function Library:CreateWindow(...)
         Text = WindowInfo.Title or "";
         TextSize = 13;
         TextXAlignment = Enum.TextXAlignment.Left;
+        TextYAlignment = Enum.TextYAlignment.Center;
         ZIndex = 1;
         Parent = HeaderLeft;
     })
@@ -7077,18 +7612,19 @@ function Library:CreateWindow(...)
         Text = WindowInfo.Subtitle or "";
         TextSize = 13;
         TextXAlignment = Enum.TextXAlignment.Left;
+        TextYAlignment = Enum.TextYAlignment.Center;
         Visible = (WindowInfo.Subtitle or "") ~= "";
         ZIndex = 1;
         Parent = HeaderLeft;
     })
     Library:DimLabel(WindowSubtitle)
 
+    -- fixed size pill so the text is dead center
     local WindowBadge = Library:Create("Frame", {
-        AutomaticSize = Enum.AutomaticSize.X;
         BackgroundColor3 = Library.MainColor;
-        Corner = 8;
+        Corner = 9;
         LayoutOrder = 3;
-        Size = UDim2.fromOffset(0, 20);
+        Size = UDim2.fromOffset(34, 18);
         Visible = (WindowInfo.Badge or "") ~= "";
         ZIndex = 1;
         Parent = HeaderLeft;
@@ -7098,30 +7634,32 @@ function Library:CreateWindow(...)
     })
     Library:AddStroke(WindowBadge, "OutlineColor")
 
-    Library:Create("UIPadding", {
-        PaddingLeft = UDim.new(0, 9);
-        PaddingRight = UDim.new(0, 9);
-        Parent = WindowBadge;
-    })
-
     local WindowBadgeLabel = Library:CreateLabel({
-        AutomaticSize = Enum.AutomaticSize.X;
-        Size = UDim2.new(0, 0, 1, 0);
+        Size = UDim2.new(1, 0, 1, 0);
         Text = WindowInfo.Badge or "";
         TextSize = 11;
+        TextXAlignment = Enum.TextXAlignment.Center;
+        TextYAlignment = Enum.TextYAlignment.Center;
         ZIndex = 1;
         Parent = WindowBadge;
     })
 
+    local function SizeBadge()
+        local TextWidth = Library:GetTextBounds(WindowBadgeLabel.Text, Library.Font, 11)
+        WindowBadge.Size = UDim2.fromOffset(math.max(30, math.ceil(TextWidth) + 18), 18)
+    end
+    SizeBadge()
+
     local WindowUser = Library:CreateLabel({
         AnchorPoint = Vector2.new(1, 0.5);
-        Position = UDim2.new(1, -20, 0, HeaderHeight / 2);
+        Position = UDim2.new(1, -18, 0.5, 0);
         Size = UDim2.fromOffset(120, 20);
         Text = WindowInfo.Username or "";
         TextSize = 12;
         TextXAlignment = Enum.TextXAlignment.Right;
+        TextYAlignment = Enum.TextYAlignment.Center;
         ZIndex = 1;
-        Parent = Inner;
+        Parent = Topbar;
     })
     Library:DimLabel(WindowUser)
 
@@ -7141,6 +7679,28 @@ function Library:CreateWindow(...)
         Parent = MainSectionOuter;
     })
 
+    -- the pill behind the selected tab; it slides to whichever tab is picked
+    local TabSelectorClip = Library:Create("Frame", {
+        BackgroundTransparency = 1;
+        ClipsDescendants = true;
+        Position = UDim2.new(0, 20 - WindowInfo.TabPadding, 0, TabRowTop);
+        Size = UDim2.new(1, -(40 - WindowInfo.TabPadding), 0, TabRowHeight);
+        ZIndex = 2;
+        Parent = MainSectionInner;
+    })
+
+    local TabSelector = Library:Create("Frame", {
+        BackgroundColor3 = Library.MainColor;
+        Corner = 14;
+        Size = UDim2.fromOffset(0, 28);
+        ZIndex = 2;
+        Parent = TabSelectorClip;
+    })
+    Library:AddToRegistry(TabSelector, {
+        BackgroundColor3 = "MainColor";
+    })
+    Library:AddStroke(TabSelector, "OutlineColor")
+
     local TabArea = Library:Create("ScrollingFrame", {
         ScrollingDirection = Enum.ScrollingDirection.X;
         CanvasSize = UDim2.new(0, 0, 2, 0);
@@ -7148,9 +7708,9 @@ function Library:CreateWindow(...)
         AutomaticCanvasSize = Enum.AutomaticSize.XY;
         ScrollBarThickness = 0;
         BackgroundTransparency = 1;
-        Position = UDim2.new(0, 20 - WindowInfo.TabPadding, 0, HeaderHeight);
+        Position = UDim2.new(0, 20 - WindowInfo.TabPadding, 0, TabRowTop);
         Size = UDim2.new(1, -(40 - WindowInfo.TabPadding), 0, TabRowHeight);
-        ZIndex = 1;
+        ZIndex = 3;
         Parent = MainSectionInner;
     })
 
@@ -7177,13 +7737,13 @@ function Library:CreateWindow(...)
         Parent = TabArea;
     })
 
-    -- the tab pages sit under the pill row; the footer (when used) takes the bottom strip
+    -- the tab pages sit under the pill row; the bottom bar (when used) takes the last strip
     local TabContainer = Library:Create("Frame", {
         BackgroundColor3 = Library.MainColor;
         BackgroundTransparency = 1;
         Corner = 10;
-        Position = UDim2.new(0, 16, 0, HeaderHeight + TabRowHeight + 10);
-        Size = UDim2.new(1, -32, 1, -(HeaderHeight + TabRowHeight + 10 + FooterHeight + 6));
+        Position = UDim2.new(0, 16, 0, ContentTop);
+        Size = UDim2.new(1, -32, 1, -(ContentTop + FooterHeight + 10));
         ZIndex = 2;
         Parent = MainSectionInner;
     })
@@ -7218,32 +7778,34 @@ function Library:CreateWindow(...)
         BackgroundColor3 = "MainColor";
     })
 
-    -- footer: status on the left, a link / note in the middle, build info on the right
+    -- bottom bar: status on the left, a link in the middle, build info on the right
     local FooterHolder = Library:Create("Frame", {
-        BackgroundTransparency = 1;
+        BackgroundColor3 = Library.TopbarColor;
         Position = UDim2.new(0, 0, 1, -FooterHeight);
         Size = UDim2.new(1, 0, 0, FooterHeight);
         Visible = false;
         ZIndex = 1;
         Parent = Inner;
     })
+    Library:AddToRegistry(FooterHolder, {
+        BackgroundColor3 = "TopbarColor";
+    })
 
     local FooterLine = Library:Create("Frame", {
-        BackgroundColor3 = Library.OutlineColor;
-        BackgroundTransparency = 0.5;
-        Position = UDim2.new(0, 16, 0, 0);
-        Size = UDim2.new(1, -32, 0, 1);
+        BackgroundColor3 = Library.CardOutlineColor;
+        Size = UDim2.new(1, 0, 0, 1);
         ZIndex = 1;
         Parent = FooterHolder;
     })
     Library:AddToRegistry(FooterLine, {
-        BackgroundColor3 = "OutlineColor";
+        BackgroundColor3 = "CardOutlineColor";
     })
 
+    -- every footer piece is a full height row centered on the same line, so the text lines up
     local FooterLeft = Library:Create("Frame", {
         BackgroundTransparency = 1;
-        Position = UDim2.new(0, 20, 0, 1);
-        Size = UDim2.new(0.4, 0, 1, -1);
+        Position = UDim2.new(0, 18, 0, 0);
+        Size = UDim2.new(0.33, 0, 1, 0);
         ZIndex = 1;
         Parent = FooterHolder;
     })
@@ -7251,6 +7813,7 @@ function Library:CreateWindow(...)
     Library:Create("UIListLayout", {
         Padding = UDim.new(0, 7);
         FillDirection = Enum.FillDirection.Horizontal;
+        HorizontalAlignment = Enum.HorizontalAlignment.Left;
         SortOrder = Enum.SortOrder.LayoutOrder;
         VerticalAlignment = Enum.VerticalAlignment.Center;
         Parent = FooterLeft;
@@ -7271,20 +7834,22 @@ function Library:CreateWindow(...)
     local FooterLeftLabel = Library:CreateLabel({
         AutomaticSize = Enum.AutomaticSize.X;
         LayoutOrder = 2;
-        Size = UDim2.fromOffset(0, 16);
+        Size = UDim2.new(0, 0, 1, 0);
         TextSize = 11;
         TextXAlignment = Enum.TextXAlignment.Left;
+        TextYAlignment = Enum.TextYAlignment.Center;
         ZIndex = 1;
         Parent = FooterLeft;
     })
     Library:DimLabel(FooterLeftLabel)
 
     local FooterCenterLabel = Library:CreateLabel({
-        AnchorPoint = Vector2.new(0.5, 0.5);
-        Position = UDim2.new(0.5, 0, 0.5, 1);
-        Size = UDim2.new(0.3, 0, 0, 16);
+        AnchorPoint = Vector2.new(0.5, 0);
+        Position = UDim2.new(0.5, 0, 0, 0);
+        Size = UDim2.new(0.34, 0, 1, 0);
         TextSize = 11;
         TextXAlignment = Enum.TextXAlignment.Center;
+        TextYAlignment = Enum.TextYAlignment.Center;
         ZIndex = 1;
         Parent = FooterHolder;
     })
@@ -7293,8 +7858,8 @@ function Library:CreateWindow(...)
     local FooterRight = Library:Create("Frame", {
         AnchorPoint = Vector2.new(1, 0);
         BackgroundTransparency = 1;
-        Position = UDim2.new(1, -20, 0, 1);
-        Size = UDim2.new(0.4, 0, 1, -1);
+        Position = UDim2.new(1, -18, 0, 0);
+        Size = UDim2.new(0.33, 0, 1, 0);
         ZIndex = 1;
         Parent = FooterHolder;
     })
@@ -7311,8 +7876,9 @@ function Library:CreateWindow(...)
     local FooterRightLabel = Library:CreateLabel({
         AutomaticSize = Enum.AutomaticSize.X;
         LayoutOrder = 1;
-        Size = UDim2.fromOffset(0, 16);
+        Size = UDim2.new(0, 0, 1, 0);
         TextSize = 11;
+        TextYAlignment = Enum.TextYAlignment.Center;
         ZIndex = 1;
         Parent = FooterRight;
     })
@@ -7320,10 +7886,10 @@ function Library:CreateWindow(...)
 
     local FooterRightValue = Library:CreateLabel({
         AutomaticSize = Enum.AutomaticSize.X;
-        Font = Enum.Font.GothamMedium;
         LayoutOrder = 2;
-        Size = UDim2.fromOffset(0, 16);
+        Size = UDim2.new(0, 0, 1, 0);
         TextSize = 11;
+        TextYAlignment = Enum.TextYAlignment.Center;
         ZIndex = 1;
         Parent = FooterRight;
     })
@@ -7347,14 +7913,15 @@ function Library:CreateWindow(...)
 
         WindowBadgeLabel.Text = Text
         WindowBadge.Visible = Text ~= ""
+        SizeBadge()
     end
 
     function Window:SetUsername(Text)
         WindowUser.Text = typeof(Text) == "string" and Text or ""
     end
 
-    -- Info = { Left = "9096 online", Center = "discord.gg/...", RightLabel = "Build:", RightValue = "Jun 19 2026" }
-    -- the strip only shows up when at least one of them is set
+    -- Info = { Left = "Connected", Center = "discord.gg/...", RightLabel = "Build:", RightValue = "Oct 7 2026" }
+    -- the bar only shows up when at least one of them is set
     function Window:SetFooter(Info)
         Info = typeof(Info) == "table" and Info or {}
 
@@ -7378,9 +7945,9 @@ function Library:CreateWindow(...)
         FooterHolder.Visible = HasFooter
 
         if HasFooter then
-            TabContainer.Size = UDim2.new(1, -32, 1, -(HeaderHeight + TabRowHeight + 10 + FooterHeight + 6))
+            TabContainer.Size = UDim2.new(1, -32, 1, -(ContentTop + FooterHeight + 10))
         else
-            TabContainer.Size = UDim2.new(1, -32, 1, -(HeaderHeight + TabRowHeight + 10 + 16))
+            TabContainer.Size = UDim2.new(1, -32, 1, -(ContentTop + 16))
         end
     end
 
@@ -7413,8 +7980,42 @@ function Library:CreateWindow(...)
         BackgroundImage.Visible = true
     end
 
-    -- tabs are pills now, there is no sliding indicator; kept so older scripts that call it don't break
-    function Window:MoveTabIndicator() end
+    -- slides the selector pill to a tab: fast at the start, slow at the end
+    local SelectorTween = nil
+    local SelectorGoal = nil
+
+    function Window:MoveTabIndicator(Button, Instant)
+        if not Button or Button.AbsoluteSize.X <= 0 then
+            return
+        end
+
+        local Scale = WindowScale.Scale
+
+        local Position = UDim2.fromOffset(
+            (Button.AbsolutePosition.X - TabSelectorClip.AbsolutePosition.X) / Scale,
+            (Button.AbsolutePosition.Y - TabSelectorClip.AbsolutePosition.Y) / Scale
+        )
+        local Size = UDim2.fromOffset(Button.AbsoluteSize.X / Scale, Button.AbsoluteSize.Y / Scale)
+
+        if SelectorTween then
+            SelectorTween:Cancel()
+            SelectorTween = nil
+        end
+
+        if Instant or SelectorGoal == nil then
+            SelectorGoal = Position
+            TabSelector.Position = Position
+            TabSelector.Size = Size
+            return
+        end
+
+        SelectorGoal = Position
+        SelectorTween = TweenService:Create(TabSelector, TweenInfo.new(0.4, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {
+            Position = Position;
+            Size = Size;
+        })
+        SelectorTween:Play()
+    end
 
     function Window:AddDialog(Idx, Info)
         assert(Info.Title, "AddDialog: Missing `Title` string.")
@@ -7896,28 +8497,20 @@ function Library:CreateWindow(...)
 
         local TabButtonWidth = Library:GetTextBounds(Tab.Name, Library.Font, 12)
 
-        -- pill: filled + outlined while selected, bare text otherwise
+        -- the tab itself is just text; the pill behind the selected one is Window's sliding selector
         local TabButton = Library:Create("Frame", {
-            BackgroundColor3 = Library.MainColor;
             BackgroundTransparency = 1;
-            Corner = 14;
             Size = UDim2.new(0, TabButtonWidth + 32, 0, 28);
-            ZIndex = 1;
+            ZIndex = 3;
             Parent = TabArea;
         })
-
-        Library:AddToRegistry(TabButton, {
-            BackgroundColor3 = "MainColor";
-        })
-
-        local TabButtonStroke = Library:AddStroke(TabButton, "OutlineColor", 1)
 
         local TabButtonLabel = Library:CreateLabel({
             Position = UDim2.new(0, 0, 0, 0);
             Size = UDim2.new(1, 0, 1, 0);
             Text = Tab.Name;
             TextSize = 12;
-            ZIndex = 1;
+            ZIndex = 3;
             Parent = TabButton;
         })
         Library:DimLabel(TabButtonLabel)
@@ -7927,9 +8520,6 @@ function Library:CreateWindow(...)
         local TabStateInfo = TweenInfo.new(0.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
 
         local function RefreshTabButton()
-            TweenService:Create(TabButton, TabStateInfo, { BackgroundTransparency = TabActive and 0 or 1 }):Play()
-            TweenService:Create(TabButtonStroke, TabStateInfo, { Transparency = TabActive and 0 or 1 }):Play()
-
             local Bright = TabActive or TabHovered
             TweenService:Create(TabButtonLabel, TabStateInfo, { TextColor3 = Bright and Library.FontColor or Library:GetDimColor() }):Play()
 
@@ -8076,11 +8666,29 @@ do
             Parent = LeftSide;
         })
 
+        -- room for the 1px card borders, the scrolling frame would clip them otherwise
+        Library:Create("UIPadding", {
+            PaddingBottom = UDim.new(0, 1);
+            PaddingLeft = UDim.new(0, 1);
+            PaddingRight = UDim.new(0, 1);
+            PaddingTop = UDim.new(0, 1);
+            Parent = LeftSide;
+        })
+
         Library:Create("UIListLayout", {
             Padding = UDim.new(0, 10);
             FillDirection = Enum.FillDirection.Vertical;
             SortOrder = Enum.SortOrder.LayoutOrder;
             HorizontalAlignment = Enum.HorizontalAlignment.Center;
+            Parent = RightSide;
+        })
+
+        -- room for the 1px card borders, the scrolling frame would clip them otherwise
+        Library:Create("UIPadding", {
+            PaddingBottom = UDim.new(0, 1);
+            PaddingLeft = UDim.new(0, 1);
+            PaddingRight = UDim.new(0, 1);
+            PaddingTop = UDim.new(0, 1);
             Parent = RightSide;
         })
 
@@ -8190,7 +8798,7 @@ end
             Library.RegistryMap[TopBarLabel].Properties.TextColor3 = Tab.WarningBox.IsNormal == true and "FontColor" or nil
         end
 
-        -- groupboxes and tabboxes sit inside a holder so their layout slot stays put while they animate in
+        -- groupboxes and tabboxes sit inside a holder so their layout slot stays put
         function Tab:AttachBox(BoxOuter, Side)
             local Holder = Library:Create("Frame", {
                 BackgroundTransparency = 1;
@@ -8212,70 +8820,7 @@ end
             table.insert(Tab.AnimatedBoxes, { Holder = Holder; Outer = BoxOuter; Side = Side; })
         end
 
-        local function ResetBoxes()
-            Tab.ShowToken = Tab.ShowToken + 1
-
-            for _, ShowTween in next, Tab.ShowTweens do
-                ShowTween:Cancel()
-            end
-            Tab.ShowTweens = {}
-
-            for _, Box in next, Tab.AnimatedBoxes do
-                Box.Outer.Position = UDim2.new()
-
-                if Box.Faded then
-                    Box.Faded = false
-                    Library:SetFade(Box.Outer, 1)
-                end
-            end
-        end
-
-        -- every box starts 10px above its slot and falls into place while fading in, one after another
-        function Tab:PlayShowAnimation()
-            ResetBoxes()
-
-            local Token = Tab.ShowToken
-            local Ranks = { [1] = 0; [2] = 0; }
-
-            for _, Box in next, Tab.AnimatedBoxes do
-                if not Box.Holder.Visible then
-                    continue
-                end
-
-                local Rank = Ranks[Box.Side]
-                Ranks[Box.Side] = Rank + 1
-
-                Box.Outer.Position = UDim2.fromOffset(0, -10)
-                Library:CaptureFade(Box.Outer)
-                Library:SetFade(Box.Outer, 0)
-                Box.Faded = true
-
-                local Delay = math.min(Rank * 2 + (Box.Side == 2 and 1 or 0), 8) * 0.04
-
-                task.delay(Delay, function()
-                    if Token ~= Tab.ShowToken then
-                        return
-                    end
-
-                    local ShowInfo = TweenInfo.new(0.3, Enum.EasingStyle.Quint, Enum.EasingDirection.Out)
-                    local ShowTween = TweenService:Create(Box.Outer, ShowInfo, { Position = UDim2.new(); })
-
-                    table.insert(Tab.ShowTweens, ShowTween)
-                    ShowTween:Play()
-                    Library:SetFade(Box.Outer, 1, ShowInfo)
-
-                    task.delay(0.32, function()
-                        if Token == Tab.ShowToken then
-                            Box.Faded = false
-                        end
-                    end)
-                end)
-            end
-        end
-
         function Tab:ShowTab()
-            local WasActive = Library.ActiveTab == Name
-
             Library.ActiveTab = Name
             for _, Tab in next, Window.Tabs do
                 Tab:HideTab()
@@ -8287,9 +8832,7 @@ end
 
             Tab:Resize()
 
-            if not WasActive and Outer.Visible and Library.TotalTabs > 1 then
-                Tab:PlayShowAnimation()
-            end
+            Window:MoveTabIndicator(TabButton)
         end
         Tab.Show = Tab.ShowTab
 
@@ -8297,8 +8840,6 @@ end
             TabActive = false
             RefreshTabButton()
             TabFrame.Visible = false
-            ResetBoxes()
-        end
         Tab.Hide = Tab.HideTab
 
         function Tab:SetLayoutOrder(Position)
@@ -8346,7 +8887,7 @@ end
                     return Library:GetCardColor()
                 end;
             })
-            Library:AddStroke(BoxOuter, "OutlineColor")
+            Library:AddStroke(BoxOuter, "CardOutlineColor")
 
             local BoxInner = Library:Create("Frame", {
                 BackgroundTransparency = 1;
@@ -8445,7 +8986,7 @@ end
                     return Library:GetCardColor()
                 end;
             })
-            Library:AddStroke(BoxOuter, "OutlineColor")
+            Library:AddStroke(BoxOuter, "CardOutlineColor")
 
             local BoxInner = Library:Create("Frame", {
                 BackgroundTransparency = 1;
@@ -8458,7 +8999,7 @@ end
 
             local TabboxButtons = Library:Create("Frame", {
                 BackgroundTransparency = 1;
-                Position = UDim2.new(0, 10, 0, 9);
+                Position = UDim2.new(0, 10, 0, 3);
                 Size = UDim2.new(1, -20, 0, 24);
                 ZIndex = 5;
                 Parent = BoxInner;
@@ -8471,6 +9012,18 @@ end
                 SortOrder = Enum.SortOrder.LayoutOrder;
                 VerticalAlignment = Enum.VerticalAlignment.Center;
                 Parent = TabboxButtons;
+            })
+
+            -- same thin rule the groupbox titles have, under the tab strip
+            local TabboxRule = Library:Create("Frame", {
+                BackgroundColor3 = Library.OutlineColor;
+                Position = UDim2.new(0, 14, 0, 30);
+                Size = UDim2.new(1, -28, 0, 1);
+                ZIndex = 5;
+                Parent = BoxInner;
+            })
+            Library:AddToRegistry(TabboxRule, {
+                BackgroundColor3 = "OutlineColor";
             })
 
             function Tabbox:AddTab(Name)
@@ -8535,8 +9088,8 @@ end
 
                 local Container = Library:Create("Frame", {
                     BackgroundTransparency = 1;
-                    Position = UDim2.new(0, 14, 0, 47);
-                    Size = UDim2.new(1, -24, 1, -47);
+                    Position = UDim2.new(0, 14, 0, 38);
+                    Size = UDim2.new(1, -24, 1, -38);
                     ZIndex = 1;
                     Visible = false;
                     Parent = BoxInner;
@@ -8579,8 +9132,8 @@ end
                         end
                     end
 
-                    -- header (47) + rows + a little room at the bottom
-                    BoxOuter.Size = UDim2.new(1, 0, 0, (47 * DPIScale + Size) + 6)
+                    -- header (38) + rows + a little room at the bottom
+                    BoxOuter.Size = UDim2.new(1, 0, 0, (38 * DPIScale + Size) + 6)
                 end
 
                 Button.InputBegan:Connect(function(Input)
@@ -8739,6 +9292,12 @@ end
 
         Library:SetFade(Inner, Toggled and 1 or 0, AnimationInfo)
         TweenService:Create(WindowScale, AnimationInfo, { Scale = Toggled and 1 or Library.WindowClosedScale }):Play()
+
+        -- the shadow sits outside of Inner so it fades on its own
+        if Toggled then
+            WindowShadow.ImageTransparency = 1
+        end
+        TweenService:Create(WindowShadow, AnimationInfo, { ImageTransparency = Toggled and 0.35 or 1 }):Play()
 
         if Library.Blur then
             if Toggled and Library.BlurEnabled then
@@ -8955,6 +9514,6 @@ Library:GiveSignal(RunService.RenderStepped:Connect(function(Delta)
 end))
 
 ----
-getgenv().Matcha = Library
-if getgenv().skip_getgenv_matcha ~= true then getgenv().Library = Library end
+getgenv().Noctalia = Library
+if getgenv().skip_getgenv_noctalia ~= true then getgenv().Library = Library end
 return Library
