@@ -240,6 +240,11 @@ do
     end
 
     for AssetName, _ in CustomImageManagerAssets do
+        -- the Noto Sans Sundanese files are only fetched when getgenv().NoctaliaUseCustomFont = true
+        if (AssetName == "FontRegular" or AssetName == "FontBold") and getgenv().NoctaliaUseCustomFont ~= true then
+            continue
+        end
+
         CustomImageManager.DownloadAsset(AssetName)
     end
 end
@@ -252,8 +257,8 @@ do
             return
         end
 
-        -- set getgenv().NoctaliaUseCustomFont = false before loading to stay on the roblox font
-        if getgenv().NoctaliaUseCustomFont == false then
+        -- opt in with getgenv().NoctaliaUseCustomFont = true before loading (its latin glyphs have odd spacing)
+        if getgenv().NoctaliaUseCustomFont ~= true then
             return
         end
 
@@ -282,6 +287,14 @@ do
 
     if not Success then
         CustomFace, CustomFaceBold = nil, nil
+    end
+
+    -- default: Roboto, the closest roblox font to Noto Sans
+    if not CustomFace then
+        pcall(function()
+            CustomFace = Font.new("rbxasset://fonts/families/Roboto.json", Enum.FontWeight.Regular, Enum.FontStyle.Normal)
+            CustomFaceBold = Font.new("rbxasset://fonts/families/Roboto.json", Enum.FontWeight.Bold, Enum.FontStyle.Normal)
+        end)
     end
 end
 
@@ -312,8 +325,8 @@ local Library = {
     OnlineColor = Color3.fromRGB(64, 200, 110);
 
     Black = Color3.new(0, 0, 0);
-    Font = Enum.Font.Gotham; -- fallback when the custom font could not be loaded
-    FontFace = CustomFace; -- Noto Sans Sundanese
+    Font = Enum.Font.Roboto; -- fallback when FontFace could not be created
+    FontFace = CustomFace; -- Roboto (or Noto Sans Sundanese when opted in)
     FontFaceBold = CustomFaceBold;
 
     -- panel style --
@@ -372,7 +385,7 @@ local Library = {
     -- notification --
     Notify = nil;
     NotifySide = "Left";
-    ShowCustomCursor = true;
+    ShowCustomCursor = false;
     ShowToggleFrameInKeybinds = true;
     NotifyOnError = false; -- true = Library:Notify for SafeCallback (still warns in the developer console)
 
@@ -1719,7 +1732,7 @@ local Templates = { -- TO-DO: do it for missing elements.
         TabPadding = 8,
         MenuFadeTime = 0.2,
         NotifySide = "Left",
-        ShowCustomCursor = true,
+        ShowCustomCursor = false,
         UnlockMouseWhileOpen = true,
         Center = false
     },
@@ -7047,7 +7060,7 @@ do
 
         if Badge ~= "" then
             local Width = Library:GetTextBounds(Badge, Library.Font, 10)
-            BadgeFrame.Size = UDim2.fromOffset(math.max(28, math.ceil(Width) + 16), 16)
+            BadgeFrame.Size = UDim2.fromOffset(math.max(28, math.ceil((Width + 16) / 2) * 2), 16)
         end
     end
 
@@ -7495,10 +7508,20 @@ function Library:CreateWindow(...)
     end
 
     Library.NotifySide = WindowInfo.NotifySide
-    Library.ShowCustomCursor = WindowInfo.ShowCustomCursor
+    Library.ShowCustomCursor = false
 
     if WindowInfo.TabPadding <= 0 then WindowInfo.TabPadding = 1 end
-    if WindowInfo.Center then WindowInfo.Position = UDim2.new(0.5, -WindowInfo.Size.X.Offset / 2, 0.5, -WindowInfo.Size.Y.Offset / 2) end
+    if WindowInfo.Center then
+        local GuiSize = ScreenGui.AbsoluteSize
+        if GuiSize.X <= 0 or GuiSize.Y <= 0 then
+            GuiSize = ViewportSize
+        end
+
+        WindowInfo.Position = UDim2.fromOffset(
+            math.floor((GuiSize.X - WindowInfo.Size.X.Offset) / 2),
+            math.floor((GuiSize.Y - WindowInfo.Size.Y.Offset) / 2)
+        )
+    end
 
     local Window = {
         Tabs = {};
@@ -7666,7 +7689,7 @@ function Library:CreateWindow(...)
 
     local function SizeBadge()
         local TextWidth = Library:GetTextBounds(WindowBadgeLabel.Text, Library.Font, 11)
-        WindowBadge.Size = UDim2.fromOffset(math.max(30, math.ceil(TextWidth) + 18), 18)
+        WindowBadge.Size = UDim2.fromOffset(math.max(30, math.ceil((TextWidth + 18) / 2) * 2), 18)
     end
     SizeBadge()
 
@@ -8531,7 +8554,7 @@ function Library:CreateWindow(...)
         -- the tab itself is just text; the pill behind the selected one is Window's sliding selector
         local TabButton = Library:Create("Frame", {
             BackgroundTransparency = 1;
-            Size = UDim2.new(0, TabButtonWidth + 32, 0, 28);
+            Size = UDim2.new(0, math.ceil((TabButtonWidth + 32) / 2) * 2, 0, 28);
             ZIndex = 3;
             Parent = TabArea;
         })
@@ -8760,6 +8783,31 @@ do
             end)
         end
 
+        -- left / right column geometry in whole pixels, y = top offset, cut = space taken from the bottom
+        local function PlaceSides(Y, Cut)
+            local Total = TabFrame.AbsoluteSize.X
+            if Total <= 0 then
+                Total = math.max(0, TabContainer.AbsoluteSize.X)
+            end
+
+            if Total <= 0 then
+                -- not laid out yet, the size signal below calls this again
+                LeftSide.Position = UDim2.new(0, 0, 0, Y)
+                LeftSide.Size = UDim2.new(0.5, -5, 1, -Cut)
+                RightSide.Position = UDim2.new(0.5, 5, 0, Y)
+                RightSide.Size = UDim2.new(0.5, -5, 1, -Cut)
+                return
+            end
+
+            local LeftWidth = math.floor((Total - 10) / 2)
+            local RightWidth = Total - 10 - LeftWidth
+
+            LeftSide.Position = UDim2.new(0, 0, 0, Y)
+            LeftSide.Size = UDim2.new(0, LeftWidth, 1, -Cut)
+            RightSide.Position = UDim2.new(0, LeftWidth + 10, 0, Y)
+            RightSide.Size = UDim2.new(0, RightWidth, 1, -Cut)
+        end
+
         function Tab:Resize()
             if TopBar.Visible == true then
                 local MaximumSize = math.floor(TabFrame.AbsoluteSize.Y / 3.25)
@@ -8779,26 +8827,18 @@ do
                 Size = Size + 10
 
                 if TopBar.Position.Y.Offset > 0 then
-                    LeftSide.Position = UDim2.new(0, 0, 0, Size)
-                    LeftSide.Size = UDim2.new(0.5, -5, 1, -Size)
-
-                    RightSide.Position = UDim2.new(0.5, 5, 0, Size)
-                    RightSide.Size = UDim2.new(0.5, -5, 1, -Size)
+                    PlaceSides(Size, Size)
                 else
-                    LeftSide.Position = UDim2.new(0, 0, 0, 0)
-                    LeftSide.Size = UDim2.new(0.5, -5, 1, -Size)
-
-                    RightSide.Position = UDim2.new(0.5, 5, 0, 0)
-                    RightSide.Size = UDim2.new(0.5, -5, 1, -Size)
+                    PlaceSides(0, Size)
                 end
             else
-                LeftSide.Position = UDim2.new(0, 0, 0, 0)
-                LeftSide.Size = UDim2.new(0.5, -5, 1, 0)
-
-                RightSide.Position = UDim2.new(0.5, 5, 0, 0)
-                RightSide.Size = UDim2.new(0.5, -5, 1, 0)
+                PlaceSides(0, 0)
             end
         end
+
+        TabFrame:GetPropertyChangedSignal("AbsoluteSize"):Connect(function()
+            Tab:Resize()
+        end)
 
         function Tab:UpdateWarningBox(Info)
             if typeof(Info.Bottom) == "boolean"     then Tab.WarningBox.Bottom      = Info.Bottom end
@@ -8889,7 +8929,7 @@ end
 
                 local TabButtonWidth = Library:GetTextBounds(Tab.Name, Library.Font, 12)
 
-                TabButton.Size = UDim2.new(0, TabButtonWidth + 32, 0, 28)
+                TabButton.Size = UDim2.new(0, math.ceil((TabButtonWidth + 32) / 2) * 2, 0, 28)
                 TabButtonLabel.Text = Tab.Name
             end
         end
@@ -9074,7 +9114,7 @@ end
                     BackgroundColor3 = Library.MainColor;
                     BackgroundTransparency = 1;
                     Corner = 7;
-                    Size = UDim2.new(0, ButtonWidth + 30, 1, 0);
+                    Size = UDim2.new(0, math.ceil((ButtonWidth + 30) / 2) * 2, 1, 0);
                     ZIndex = 6;
                     Parent = TabboxButtons;
                 })
@@ -9255,46 +9295,6 @@ end
         if Toggled then
             -- we want to show the frame immediately so that the fade is visible.
             Outer.Visible = true
-
-            if DrawingLib.drawing_replaced ~= true and IsBadDrawingLib ~= true then
-                IsBadDrawingLib = not (pcall(function()
-                    local Cursor = DrawingLib.new("Triangle")
-                    Cursor.Thickness = 1
-                    Cursor.Filled = true
-                    Cursor.Visible = Library.ShowCustomCursor
-
-                    local CursorOutline = DrawingLib.new("Triangle")
-                    CursorOutline.Thickness = 1
-                    CursorOutline.Filled = false
-                    CursorOutline.Color = Color3.new(0, 0, 0)
-                    CursorOutline.Visible = Library.ShowCustomCursor
-                    
-                    local OldMouseIconState = InputService.MouseIconEnabled
-                    local ShowCursorBinding = Library.ShowCursorBinding
-                    pcall(function() RunService:UnbindFromRenderStep(ShowCursorBinding) end)
-                    RunService:BindToRenderStep(ShowCursorBinding, Enum.RenderPriority.Camera.Value - 1, function()
-                        InputService.MouseIconEnabled = not Library.ShowCustomCursor
-                        local mPos = InputService:GetMouseLocation()
-                        local X, Y = mPos.X, mPos.Y
-                        Cursor.Color = Library.AccentColor
-                        Cursor.PointA = Vector2.new(X, Y)
-                        Cursor.PointB = Vector2.new(X + 16, Y + 6)
-                        Cursor.PointC = Vector2.new(X + 6, Y + 16)
-                        Cursor.Visible = Library.ShowCustomCursor
-                        CursorOutline.PointA = Cursor.PointA
-                        CursorOutline.PointB = Cursor.PointB
-                        CursorOutline.PointC = Cursor.PointC
-                        CursorOutline.Visible = Library.ShowCustomCursor
-
-                        if not Toggled or (not ScreenGui or not ScreenGui.Parent) then
-                            InputService.MouseIconEnabled = OldMouseIconState
-                            if Cursor then Cursor:Destroy() end
-                            if CursorOutline then CursorOutline:Destroy() end
-                            RunService:UnbindFromRenderStep(ShowCursorBinding)
-                        end
-                    end)
-                end))
-            end
         end
 
         for _, Option in Options do
