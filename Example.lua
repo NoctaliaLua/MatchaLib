@@ -12,6 +12,18 @@ local Players = game:GetService("Players")
 Library.ShowToggleFrameInKeybinds = true
 Library.NotifySide = "Left"
 
+local MarketplaceService = game:GetService("MarketplaceService")
+
+local GameName = "Unknown"
+
+local Success, Info = pcall(function()
+    return MarketplaceService:GetProductInfo(game.PlaceId)
+end)
+
+if Success and Info and Info.Name then
+    GameName = Info.Name
+end
+
 local Window = Library:CreateWindow({
 	Title = "Matcha",
 	Subtitle = "Interface",
@@ -19,7 +31,7 @@ local Window = Library:CreateWindow({
 
 	-- Username defaults to the local player's name; pass `Username = "..."` to override it
 	FooterLeft = "Connected",
-	FooterCenter = "matcha.pink/discord",
+	FooterCenter = GameName,
 	FooterRightLabel = "Build:",
 	FooterRightValue = os.date("%b ") .. tonumber(os.date("%d")) .. os.date(" %Y"),
 
@@ -195,16 +207,6 @@ end)
 local StartTime = tick()
 local GameName = tostring(game.Name)
 
-task.spawn(function()
-	local Success, Info = pcall(function()
-		return game:GetService("MarketplaceService"):GetProductInfo(game.PlaceId)
-	end)
-
-	if Success and Info then
-		GameName = Info.Name
-	end
-end)
-
 local FrameTimer = tick()
 local FrameCounter = 0;
 local FPS = 60;
@@ -259,11 +261,8 @@ end)
 --// Configs \\--
 ThemeManager:SetLibrary(Library)
 SaveManager:SetLibrary(Library)
-
 SaveManager:IgnoreThemeSettings()
-
 SaveManager:SetIgnoreIndexes({ "MenuKeybind" })
-
 ThemeManager:SetFolder("MyScriptHub")
 SaveManager:SetFolder("MyScriptHub/specific-game")
 SaveManager:SetSubFolder("specific-place")
