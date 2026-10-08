@@ -24,6 +24,15 @@ if Success and Info and Info.Name then
     GameName = Info.Name
 end
 
+if GameName == "Unknown" or GameName == "Ugc" then
+    pcall(function()
+        local Data = game:GetService("HttpService"):JSONDecode(game:HttpGet("https://games.roblox.com/v1/games?universeIds=" .. game.GameId))
+        if Data and Data.data and Data.data[1] and Data.data[1].name then
+            GameName = Data.data[1].name
+        end
+    end)
+end
+
 local Window = Library:CreateWindow({
 	Title = "Matcha",
 	Subtitle = "Interface",
@@ -173,7 +182,10 @@ SilentPrediction:AddToggle("SilentPredictionEnabled", { Text = "Enabled" })
 SilentPrediction:AddSlider("SilentPredictionAmount", { Text = "Amount", Default = 0.13, Min = 0, Max = 1, Rounding = 2 })
 
 local SilentFOV = SilentTabbox:AddTab("FOV")
-SilentFOV:AddToggle("SilentShowFOV", { Text = "Show Circle" })
+SilentFOV:AddToggle("SilentShowFOV", { Text = "Show Circle" }):AddColorPicker("SilentFOVColor", {
+	Default = Color3.fromRGB(205, 205, 214),
+	Title = "FOV color",
+})
 SilentFOV:AddSlider("SilentFOVRadius", { Text = "Radius", Default = 150, Min = 10, Max = 600, Rounding = 0 })
 
 local TriggerBot = Tabs.Combat:AddRightGroupbox("Trigger Bot")
@@ -205,7 +217,6 @@ end)
 
 --// Watermark \\--
 local StartTime = tick()
-local GameName = tostring(game.Name)
 
 local FrameTimer = tick()
 local FrameCounter = 0;
